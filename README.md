@@ -2,6 +2,14 @@
 
 Shared preprocessing and postprocessing library for Point Cloud Object Detection.
 
+This repo is the common runtime layer used by both the training/export pipeline and the ROS inference node.
+It centralizes geometry math, decoding, NMS, and manifest parsing so those two repos stay aligned.
+
+What you can do with pcod-common:
+- Build a small C++ library for PBOD decoding, rotated NMS, and point filtering.
+- Consume the same model manifest schema in Python and C++.
+- Use PyTorch CUDA extensions for pillarization and rotated NMS during training/inference.
+
 This repository provides:
 - C++ core utilities for postprocessing (PBOD decoding + rotated NMS).
 - CUDA kernels for pillarization and rotated NMS (built via PyTorch extensions when needed).
