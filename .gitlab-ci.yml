@@ -1,0 +1,25 @@
+stages:
+  - build
+  - test
+
+build:cmake:
+  stage: build
+  image: ubuntu:22.04
+  script:
+    - apt-get update
+    - apt-get install -y cmake g++ pkg-config libyaml-cpp-dev
+    - cmake -S . -B build -DPCOD_COMMON_BUILD_TESTS=ON
+    - cmake --build build
+  artifacts:
+    paths:
+      - build/
+
+unit:tests:
+  stage: test
+  image: ubuntu:22.04
+  script:
+    - apt-get update
+    - apt-get install -y cmake g++ pkg-config libyaml-cpp-dev
+    - cmake -S . -B build -DPCOD_COMMON_BUILD_TESTS=ON
+    - cmake --build build
+    - ctest --test-dir build

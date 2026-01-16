@@ -1,0 +1,94 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+build/
+dist/
+.eggs/
+*.egg
+*.egg-info/
+.wheelhouse/
+pip-wheel-metadata/
+share/python-wheels/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+.env
+.env.*
+.venv
+venv/
+ENV/
+env.bak/
+.envrc
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+.cache
+.tox/
+.nox/
+.hypothesis/
+
+# Type checking / lint
+.mypy_cache/
+.pytype/
+.pyre/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# C/C++ / CMake
+CMakeCache.txt
+CMakeFiles/
+cmake-build-*/
+compile_commands.json
+Makefile
+CMakeScripts/
+Testing/
+*.cmake
+build.ninja
+.ninja_deps
+.ninja_log
+
+# Compiled objects
+*.o
+*.obj
+*.lo
+*.la
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.pdb
+*.exp
+
+# Binaries / outputs
+bin/
+lib/
+out/
+*.exe
+
+# Logs and temp files
+*.log
+logs/
+/tmp/
+
+# Docs build
+site/
+docs/_build/
