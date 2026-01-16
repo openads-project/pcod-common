@@ -19,7 +19,7 @@ std::vector<BoundingBox> DecodePbod(
     return objects;
   }
 
-  const int reg_dim = outputs.reg_dim > 0 ? outputs.reg_dim : (7 + (config.with_velocity ? 2 : 0));
+  const int reg_dim = outputs.reg_dim > 0 ? outputs.reg_dim : 7;
 
   objects.reserve(static_cast<std::size_t>(outputs.num_pillars));
   for (int idx = 0; idx < outputs.num_pillars; ++idx) {
@@ -60,12 +60,6 @@ std::vector<BoundingBox> DecodePbod(
     box.yaw = wrap_to_range(reg_ptr[6], -static_cast<float>(M_PI), static_cast<float>(M_PI));
     if (std::isnan(box.length) || std::isnan(box.width) || std::isnan(box.height) || std::isnan(box.yaw)) {
       continue;
-    }
-
-    if (config.with_velocity && reg_dim >= 9) {
-      box.has_velocity = true;
-      box.v_x = reg_ptr[7];
-      box.v_y = reg_ptr[8];
     }
 
     for (int c = 0; c < outputs.num_classes; ++c) {

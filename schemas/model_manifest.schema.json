@@ -59,8 +59,7 @@
         "class_names": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
         "nms_iou_threshold": { "type": "number", "minimum": 0, "maximum": 1 },
         "score_threshold": { "type": ["number", "array"] },
-        "max_detections": { "type": "integer", "minimum": 1 },
-        "with_velocity": { "type": "boolean" }
+        "max_detections": { "type": "integer", "minimum": 1 }
       }
     },
     "model": {

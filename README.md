@@ -15,7 +15,8 @@ This repository provides:
 - `csrc/`: CUDA/C++ kernels for torch extensions.
 - `python/pcod_common/`: Python package sources.
 - `schemas/`: JSON schema for the model manifest.
-- `tests/`: C++/Python smoke tests.
+- `tests/`: C++ smoke tests.
+- `python/tests/`: Python unit tests.
 
 ## Build (C++)
 
@@ -26,6 +27,24 @@ ctest --test-dir build
 ```
 
 CUDA kernels are optional; enable with `-DPCOD_COMMON_ENABLE_CUDA=ON` and a CUDA-capable toolchain.
+
+## Tests (Python)
+
+```sh
+pytest
+```
+
+## Devcontainer
+
+A basic devcontainer definition is provided in `.devcontainer/`. In a container, install Python deps (including torch) and run:
+
+```sh
+pip install -e .[dev]
+cmake -S . -B build -DPCOD_COMMON_BUILD_TESTS=ON
+cmake --build build
+ctest --test-dir build
+pytest
+```
 
 ## Python Usage
 
@@ -59,4 +78,3 @@ Training export emits a `model_manifest.yml` file alongside the model artifacts.
 
 - Training repo should include pcod-common as a submodule and add it to the Python environment (e.g., `pip install -e pcod-common`).
 - ROS repo should include pcod-common as a submodule and link against the C++ library.
-

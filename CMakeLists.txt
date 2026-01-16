@@ -23,14 +23,23 @@ target_include_directories(pcod_common
     $<INSTALL_INTERFACE:include>
 )
 
-find_package(yaml-cpp REQUIRED)
-target_link_libraries(pcod_common PUBLIC yaml-cpp)
-
 if(PCOD_COMMON_BUILD_TESTS)
   enable_testing()
-  add_executable(pcod_common_tests tests/test_nms.cpp tests/test_manifest.cpp)
-  target_link_libraries(pcod_common_tests PRIVATE pcod_common)
-  add_test(NAME pcod_common_tests COMMAND pcod_common_tests)
+  add_executable(pcod_common_test_nms tests/test_nms.cpp)
+  target_link_libraries(pcod_common_test_nms PRIVATE pcod_common)
+  add_test(NAME pcod_common_test_nms COMMAND pcod_common_test_nms)
+
+  add_executable(pcod_common_test_manifest tests/test_manifest.cpp)
+  target_link_libraries(pcod_common_test_manifest PRIVATE pcod_common)
+  add_test(NAME pcod_common_test_manifest COMMAND pcod_common_test_manifest)
+
+  add_executable(pcod_common_test_preprocess tests/test_point_preprocess.cpp)
+  target_link_libraries(pcod_common_test_preprocess PRIVATE pcod_common)
+  add_test(NAME pcod_common_test_preprocess COMMAND pcod_common_test_preprocess)
+
+  add_executable(pcod_common_test_pbod_postprocess tests/test_pbod_postprocess.cpp)
+  target_link_libraries(pcod_common_test_pbod_postprocess PRIVATE pcod_common)
+  add_test(NAME pcod_common_test_pbod_postprocess COMMAND pcod_common_test_pbod_postprocess)
 endif()
 
 install(TARGETS pcod_common

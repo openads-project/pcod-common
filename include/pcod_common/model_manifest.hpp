@@ -25,7 +25,6 @@ struct PostprocessConfig {
   std::vector<float> score_thresholds;
   float nms_iou_threshold = 0.1f;
   int max_detections = 0;
-  bool with_velocity = false;
 };
 
 struct ModelConfig {

@@ -11,7 +11,6 @@ namespace pcod_common {
 struct PbodPostprocessConfig {
   std::vector<std::string> class_names;
   std::vector<float> score_thresholds;
-  bool with_velocity = false;
 };
 
 struct PbodOutputsView {
