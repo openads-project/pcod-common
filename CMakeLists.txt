@@ -40,6 +40,10 @@ if(PCOD_COMMON_BUILD_TESTS)
   add_executable(pcod_common_test_pbod_postprocess tests/test_pbod_postprocess.cpp)
   target_link_libraries(pcod_common_test_pbod_postprocess PRIVATE pcod_common)
   add_test(NAME pcod_common_test_pbod_postprocess COMMAND pcod_common_test_pbod_postprocess)
+
+  add_executable(pcod_common_test_readme_example tests/test_readme_example.cpp)
+  target_link_libraries(pcod_common_test_readme_example PRIVATE pcod_common)
+  add_test(NAME pcod_common_test_readme_example COMMAND pcod_common_test_readme_example)
 endif()
 
 install(TARGETS pcod_common
