@@ -379,6 +379,23 @@ ModelManifest LoadModelManifest(const std::string& path) {
   manifest.preprocessing.voxel_x = require_scalar<float>(root, {"preprocessing", "voxel_size", "x"});
   manifest.preprocessing.voxel_y = require_scalar<float>(root, {"preprocessing", "voxel_size", "y"});
   manifest.preprocessing.voxel_z = require_scalar<float>(root, {"preprocessing", "voxel_size", "z"});
+  manifest.preprocessing.point_features_normalization.type =
+      require_scalar<std::string>(root, {"preprocessing", "point_features_normalization", "type"});
+  manifest.preprocessing.point_features_normalization.epsilon =
+      require_scalar<float>(root, {"preprocessing", "point_features_normalization", "epsilon"});
+  if (manifest.preprocessing.point_features_normalization.type == "intensity_threshold") {
+    manifest.preprocessing.point_features_normalization.intensity_threshold =
+        require_scalar<float>(root, {"preprocessing", "point_features_normalization", "intensity_threshold"});
+  } else if (manifest.preprocessing.point_features_normalization.type == "min_max") {
+    manifest.preprocessing.point_features_normalization.min_intensity =
+        require_scalar<float>(root, {"preprocessing", "point_features_normalization", "min_intensity"});
+    manifest.preprocessing.point_features_normalization.max_intensity =
+        require_scalar<float>(root, {"preprocessing", "point_features_normalization", "max_intensity"});
+  } else if (manifest.preprocessing.point_features_normalization.type == "z_score") {
+    // No additional required fields.
+  } else if (manifest.preprocessing.point_features_normalization.type != "none") {
+    throw std::runtime_error("Unsupported preprocessing.point_features_normalization.type");
+  }
 
   manifest.postprocessing.grid_x = require_scalar<int>(root, {"postprocessing", "grid_size", "x"});
   manifest.postprocessing.grid_y = require_scalar<int>(root, {"postprocessing", "grid_size", "y"});
@@ -483,6 +500,23 @@ void ValidateModelManifest(const ModelManifest& manifest) {
   }
   if (manifest.model.pillar_map_size[0] <= 0 || manifest.model.pillar_map_size[1] <= 0) {
     throw std::runtime_error("model.pillar_map_size must be positive");
+  }
+  if (manifest.preprocessing.point_features_normalization.epsilon <= 0.0f) {
+    throw std::runtime_error("preprocessing.point_features_normalization.epsilon must be > 0");
+  }
+  const auto& norm = manifest.preprocessing.point_features_normalization;
+  if (norm.type == "intensity_threshold") {
+    if (norm.intensity_threshold <= 0.0f) {
+      throw std::runtime_error("preprocessing.point_features_normalization.intensity_threshold must be > 0");
+    }
+  } else if (norm.type == "min_max") {
+    if (!(norm.min_intensity < norm.max_intensity)) {
+      throw std::runtime_error("preprocessing.point_features_normalization requires min_intensity < max_intensity");
+    }
+  } else if (norm.type == "z_score") {
+    // ok
+  } else if (norm.type != "none") {
+    throw std::runtime_error("preprocessing.point_features_normalization.type is invalid");
   }
 }
 
