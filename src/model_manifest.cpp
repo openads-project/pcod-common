@@ -186,21 +186,6 @@ const YamlNode& require_node(const YamlNode& root, const std::vector<std::string
   return *node;
 }
 
-const YamlNode* find_node(const YamlNode& root, const std::vector<std::string>& path) {
-  const YamlNode* node = &root;
-  for (const auto& key : path) {
-    if (node->kind != YamlNode::Kind::kMap) {
-      return nullptr;
-    }
-    auto it = node->map.find(key);
-    if (it == node->map.end()) {
-      return nullptr;
-    }
-    node = &it->second;
-  }
-  return node;
-}
-
 std::string require_scalar_string(const YamlNode& root, const std::vector<std::string>& path) {
   const auto& node = require_node(root, path);
   if (node.kind != YamlNode::Kind::kScalar) {
@@ -422,7 +407,8 @@ ModelManifest LoadModelManifest(const std::string& path) {
   }
   manifest.model.first_up_stride = require_scalar<int>(root, {"model", "first_up_stride"});
 
-  const auto& pillar_map_size_node = require_node(root, {"model", "pillar_map_size"});
+  const std::vector<std::string> pillar_map_size_path = {"model", "pillar_map_size"};
+  const auto& pillar_map_size_node = require_node(root, pillar_map_size_path);
   if (pillar_map_size_node.kind == YamlNode::Kind::kSeq && pillar_map_size_node.seq.size() == 2) {
     manifest.model.pillar_map_size = {parse_scalar<int>(pillar_map_size_node.seq[0].scalar),
                                       parse_scalar<int>(pillar_map_size_node.seq[1].scalar)};
@@ -437,7 +423,8 @@ ModelManifest LoadModelManifest(const std::string& path) {
     throw std::runtime_error("Manifest field 'model.pillar_map_size' must be [x, y]");
   }
 
-  const auto& pillar_map_range_node = require_node(root, {"model", "pillar_map_range"});
+  const std::vector<std::string> pillar_map_range_path = {"model", "pillar_map_range"};
+  const auto& pillar_map_range_node = require_node(root, pillar_map_range_path);
   if (pillar_map_range_node.kind == YamlNode::Kind::kSeq && pillar_map_range_node.seq.size() == 3) {
     manifest.model.pillar_map_range = {
         require_range_node(pillar_map_range_node.seq[0], "model.pillar_map_range[0]"),
