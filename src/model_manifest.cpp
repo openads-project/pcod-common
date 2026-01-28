@@ -81,13 +81,12 @@ YamlNode parse_sequence(const std::vector<Line>& lines, size_t& index, int inden
       break;
     }
     std::string rest = trim(line.content.substr(2));
-    if (!rest.empty() && index + 1 < lines.size() && lines[index + 1].indent == indent + 2 &&
-        lines[index + 1].content.rfind("- ", 0) == 0) {
+    if (!rest.empty() && rest.rfind("- ", 0) == 0) {
       YamlNode nested;
       nested.kind = YamlNode::Kind::kSeq;
       YamlNode first;
       first.kind = YamlNode::Kind::kScalar;
-      first.scalar = rest;
+      first.scalar = trim(rest.substr(2));
       nested.seq.push_back(first);
       ++index;
       while (index < lines.size() && lines[index].indent > indent) {
@@ -148,13 +147,16 @@ YamlNode parse_map(const std::vector<Line>& lines, size_t& index, int indent) {
       node.map[key] = scalar;
       continue;
     }
-    if (index < lines.size() && lines[index].indent > indent) {
-      node.map[key] = parse_value(lines, index, lines[index].indent);
-    } else {
-      YamlNode empty;
-      empty.kind = YamlNode::Kind::kMap;
-      node.map[key] = empty;
+    if (index < lines.size()) {
+      if (lines[index].indent > indent ||
+          (lines[index].indent == indent && lines[index].content.rfind("- ", 0) == 0)) {
+        node.map[key] = parse_value(lines, index, lines[index].indent);
+        continue;
+      }
     }
+    YamlNode empty;
+    empty.kind = YamlNode::Kind::kMap;
+    node.map[key] = empty;
   }
   return node;
 }
