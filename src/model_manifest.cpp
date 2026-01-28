@@ -81,12 +81,13 @@ YamlNode parse_sequence(const std::vector<Line>& lines, size_t& index, int inden
       break;
     }
     std::string rest = trim(line.content.substr(2));
-    if (!rest.empty() && rest.rfind("- ", 0) == 0) {
+    if (!rest.empty() && index + 1 < lines.size() && lines[index + 1].indent == indent + 2 &&
+        lines[index + 1].content.rfind("- ", 0) == 0) {
       YamlNode nested;
       nested.kind = YamlNode::Kind::kSeq;
       YamlNode first;
       first.kind = YamlNode::Kind::kScalar;
-      first.scalar = trim(rest.substr(2));
+      first.scalar = rest;
       nested.seq.push_back(first);
       ++index;
       while (index < lines.size() && lines[index].indent > indent) {
