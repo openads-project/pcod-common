@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from typing import List, Tuple
 
+from pcod_common.torch_extensions.rotated_nms import load_rotated_nms_extension
 import torch
 from torchvision.ops import nms
-
-from pcod_common.torch_extensions.rotated_nms import load_rotated_nms_extension
 
 _ROTATED_NMS_EXT = None
 

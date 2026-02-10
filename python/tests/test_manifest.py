@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import pytest
 from pcod_common import manifest
+import pytest
 
 
 def _minimal_payload() -> dict:
