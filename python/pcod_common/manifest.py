@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List
 
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = '1.0'
 
 
 @dataclass
@@ -19,14 +19,12 @@ class ModelManifest:
 
 
 def validate_manifest(payload: Dict[str, Any]) -> None:
-    required = ["schema_version", "model_name", "precision", "device", "preprocessing", "postprocessing", "model"]
+    required = ['schema_version', 'model_name', 'precision', 'device', 'preprocessing', 'postprocessing', 'model']
     for key in required:
         if key not in payload:
             raise ValueError(f"Manifest missing required key '{key}'")
-    if payload["schema_version"] != SCHEMA_VERSION:
-        raise ValueError(
-            f"Unsupported manifest schema_version '{payload['schema_version']}', expected '{SCHEMA_VERSION}'"
-        )
+    if payload['schema_version'] != SCHEMA_VERSION:
+        raise ValueError(f"Unsupported manifest schema_version '{payload['schema_version']}', expected '{SCHEMA_VERSION}'")
 
 
 def score_threshold_list(value: Any) -> List[float]:

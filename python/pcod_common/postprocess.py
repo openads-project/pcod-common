@@ -68,9 +68,7 @@ def _boxes_to_corners_torch(boxes_xywlh: torch.Tensor) -> torch.Tensor:
     return corners
 
 
-def _clip_polygon_torch(
-    subject: torch.Tensor, edge_start: torch.Tensor, edge_end: torch.Tensor
-) -> torch.Tensor:
+def _clip_polygon_torch(subject: torch.Tensor, edge_start: torch.Tensor, edge_end: torch.Tensor) -> torch.Tensor:
     if subject.numel() == 0:
         return subject
     edge = edge_end - edge_start
@@ -163,7 +161,7 @@ def _nms_axis_aligned(
         dim=1,
     )
     keep_indices = nms(boxes_xyxy, scores_vec, iou_threshold)
-    return keep_indices[: max_num_objects]
+    return keep_indices[:max_num_objects]
 
 
 def apply_nms(
@@ -181,10 +179,10 @@ def apply_nms(
         return boxes, scores, labels
 
     if boxes.ndim != 2 or boxes.size(1) < 7:
-        raise ValueError("boxes must have shape (N, 7+)")
+        raise ValueError('boxes must have shape (N, 7+)')
 
     if labels.numel() != scores.numel():
-        raise ValueError("labels and scores must have the same length")
+        raise ValueError('labels and scores must have the same length')
 
     keep_indices = []
     unique_labels = labels.unique()
@@ -233,4 +231,3 @@ def apply_nms(
         keep_indices = keep_indices[order][:max_num_objects]
 
     return boxes[keep_indices], scores[keep_indices], labels[keep_indices]
-

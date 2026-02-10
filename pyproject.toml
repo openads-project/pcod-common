@@ -36,3 +36,14 @@ package-dir = {"" = "python"}
 [tool.setuptools.packages.find]
 where = ["python"]
 
+[tool.ruff]
+line-length = 130
+
+[tool.ruff.lint]
+select = ["Q", "I", "W", "D205"]
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "single"
+
+[tool.ruff.format]
+quote-style = "single"

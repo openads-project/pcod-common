@@ -10,35 +10,35 @@ from torch.utils.cpp_extension import load
 
 def load_pillar_cuda_extension():
     try:
-        return importlib.import_module("pcod_common._pillar_cuda")
+        return importlib.import_module('pcod_common._pillar_cuda')
     except Exception:
         try:
-            return importlib.import_module("pcod_common__pillar_cuda")
+            return importlib.import_module('pcod_common__pillar_cuda')
         except Exception:
             pass
 
-    if "TORCH_EXTENSIONS_DIR" not in os.environ:
-        ext_dir = Path.cwd() / ".torch_extensions"
+    if 'TORCH_EXTENSIONS_DIR' not in os.environ:
+        ext_dir = Path.cwd() / '.torch_extensions'
         ext_dir.mkdir(parents=True, exist_ok=True)
-        os.environ["TORCH_EXTENSIONS_DIR"] = str(ext_dir)
-    os.environ.setdefault("TORCH_CUDA_ARCH_LIST", "8.0")
+        os.environ['TORCH_EXTENSIONS_DIR'] = str(ext_dir)
+    os.environ.setdefault('TORCH_CUDA_ARCH_LIST', '8.0')
 
     bin_path = str(Path(sys.executable).parent)
-    if bin_path not in os.environ.get("PATH", ""):
-        os.environ["PATH"] = bin_path + os.pathsep + os.environ.get("PATH", "")
+    if bin_path not in os.environ.get('PATH', ''):
+        os.environ['PATH'] = bin_path + os.pathsep + os.environ.get('PATH', '')
 
     root_dir = Path(__file__).resolve().parents[3]
-    src_cpp = root_dir / "csrc" / "pillar_cuda.cpp"
-    src_cuda = root_dir / "csrc" / "pillar_cuda.cu"
+    src_cpp = root_dir / 'csrc' / 'pillar_cuda.cpp'
+    src_cuda = root_dir / 'csrc' / 'pillar_cuda.cu'
 
     ext = load(
-        name="pcod_common__pillar_cuda",
+        name='pcod_common__pillar_cuda',
         sources=[str(src_cpp), str(src_cuda)],
-        extra_cflags=["-O3"],
-        extra_cuda_cflags=["-O3"],
+        extra_cflags=['-O3'],
+        extra_cuda_cflags=['-O3'],
         verbose=False,
     )
-    sys.modules.setdefault("pcod_common._pillar_cuda", ext)
+    sys.modules.setdefault('pcod_common._pillar_cuda', ext)
     return ext
 
 
@@ -75,4 +75,4 @@ def pillar_preprocess(
     )
 
 
-__all__ = ["load_pillar_cuda_extension", "pillar_preprocess"]
+__all__ = ['load_pillar_cuda_extension', 'pillar_preprocess']
