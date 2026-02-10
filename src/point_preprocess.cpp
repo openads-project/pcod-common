@@ -1,6 +1,24 @@
 #include "pcod_common/point_preprocess.hpp"
 
+#include <stdexcept>
+
 namespace pcod_common {
+
+PointFeatureNormalizationType ParsePointFeatureNormalizationType(const std::string& value) {
+  if (value == "none") {
+    return PointFeatureNormalizationType::kNone;
+  }
+  if (value == "intensity_threshold") {
+    return PointFeatureNormalizationType::kIntensityThreshold;
+  }
+  if (value == "min_max") {
+    return PointFeatureNormalizationType::kMinMax;
+  }
+  if (value == "z_score") {
+    return PointFeatureNormalizationType::kZScore;
+  }
+  throw std::runtime_error("Unsupported point feature normalization type: " + value);
+}
 
 bool PointPreprocessor::IsPointValid(float x, float y, float z) const {
   const bool in_range =
@@ -41,21 +59,34 @@ bool PointPreprocessor::IsPointValid(float x, float y, float z) const {
   return true;
 }
 
+void PointPreprocessor::SetZScoreStats(float mean, float stddev) {
+  z_score_mean_ = mean;
+  z_score_std_ = std::abs(stddev) > config_.epsilon ? stddev : config_.epsilon;
+}
+
 float PointPreprocessor::NormalizeIntensity(float intensity) const {
   if (config_.zero_intensity) {
     return 0.0f;
   }
-  if (config_.intensity_threshold <= 0.0f) {
+  if (config_.normalization_type == PointFeatureNormalizationType::kNone) {
     return intensity;
   }
-  const float scaled = intensity / config_.intensity_threshold;
-  if (scaled < 0.0f) {
-    return 0.0f;
+  if (config_.normalization_type == PointFeatureNormalizationType::kIntensityThreshold) {
+    if (config_.intensity_threshold <= 0.0f) {
+      return intensity;
+    }
+    const float clipped = std::min(std::max(intensity, 0.0f), config_.intensity_threshold);
+    return clipped / std::max(config_.intensity_threshold, config_.epsilon);
   }
-  if (scaled > 1.0f) {
-    return 1.0f;
+  if (config_.normalization_type == PointFeatureNormalizationType::kMinMax) {
+    const float denom = std::max(config_.max_intensity - config_.min_intensity, config_.epsilon);
+    const float scaled = (intensity - config_.min_intensity) / denom;
+    return std::min(std::max(scaled, 0.0f), 1.0f);
   }
-  return scaled;
+  if (config_.normalization_type == PointFeatureNormalizationType::kZScore) {
+    return (intensity - z_score_mean_) / std::max(z_score_std_, config_.epsilon);
+  }
+  return intensity;
 }
 
 }  // namespace pcod_common

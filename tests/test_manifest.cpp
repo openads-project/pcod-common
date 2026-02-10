@@ -22,6 +22,10 @@ int main() {
   out << "    x: 0.1\n";
   out << "    y: 0.1\n";
   out << "    z: 0.1\n";
+  out << "  point_features_normalization:\n";
+  out << "    type: intensity_threshold\n";
+  out << "    intensity_threshold: 1.0\n";
+  out << "    epsilon: 1e-6\n";
   out << "postprocessing:\n";
   out << "  grid_size:\n";
   out << "    x: 10\n";

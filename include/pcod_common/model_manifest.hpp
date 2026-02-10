@@ -7,6 +7,14 @@
 namespace pcod_common {
 
 struct PreprocessConfig {
+  struct PointFeatureNormalization {
+    std::string type;
+    float intensity_threshold = 0.0f;
+    float min_intensity = 0.0f;
+    float max_intensity = 0.0f;
+    float epsilon = 1e-6f;
+  };
+
   int max_num_points = 0;
   int num_point_features = 0;
   std::array<float, 2> x_range{};
@@ -15,6 +23,7 @@ struct PreprocessConfig {
   float voxel_x = 0.0f;
   float voxel_y = 0.0f;
   float voxel_z = 0.0f;
+  PointFeatureNormalization point_features_normalization;
 };
 
 struct PostprocessConfig {

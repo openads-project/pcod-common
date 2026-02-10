@@ -47,8 +47,10 @@ std::vector<BoundingBox> DecodePbod(
     }
 
     BoundingBox box;
-    const float* size_ptr = outputs.size_posterior + idx * 3;
-    const float* reg_ptr = outputs.reg_logits + idx * reg_dim;
+    const int class_offset = best_class * reg_dim;
+    const int size_offset = best_class * 3;
+    const float* size_ptr = outputs.size_posterior + idx * outputs.num_classes * 3 + size_offset;
+    const float* reg_ptr = outputs.reg_logits + idx * outputs.num_classes * reg_dim + class_offset;
     const float* center = grid.center_at(idx);
 
     box.length = std::exp(reg_ptr[3]) * size_ptr[0];

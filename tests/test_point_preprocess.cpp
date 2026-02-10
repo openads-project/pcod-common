@@ -11,6 +11,7 @@ int main() {
   config.y_max = 1.0f;
   config.z_min = -1.0f;
   config.z_max = 1.0f;
+  config.normalization_type = pcod_common::PointFeatureNormalizationType::kIntensityThreshold;
   config.intensity_threshold = 10.0f;
   config.remove_points_in_zone = true;
   config.nd_x_min = -0.2f;

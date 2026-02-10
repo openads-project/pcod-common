@@ -1,8 +1,13 @@
 #pragma once
 
 #include <cmath>
+#include <string>
 
 namespace pcod_common {
+
+enum class PointFeatureNormalizationType { kNone, kIntensityThreshold, kMinMax, kZScore };
+
+PointFeatureNormalizationType ParsePointFeatureNormalizationType(const std::string& value);
 
 struct PointPreprocessConfig {
   float x_min = 0.0f;
@@ -11,7 +16,11 @@ struct PointPreprocessConfig {
   float y_max = 0.0f;
   float z_min = 0.0f;
   float z_max = 0.0f;
+  PointFeatureNormalizationType normalization_type = PointFeatureNormalizationType::kNone;
   float intensity_threshold = 1.0f;
+  float min_intensity = 0.0f;
+  float max_intensity = 1.0f;
+  float epsilon = 1e-6f;
   bool zero_intensity = false;
 
   bool remove_points_in_zone = false;
@@ -33,10 +42,13 @@ class PointPreprocessor {
   explicit PointPreprocessor(const PointPreprocessConfig& config) : config_(config) {}
 
   bool IsPointValid(float x, float y, float z) const;
+  void SetZScoreStats(float mean, float stddev);
   float NormalizeIntensity(float intensity) const;
 
  private:
   PointPreprocessConfig config_;
+  float z_score_mean_ = 0.0f;
+  float z_score_std_ = 1.0f;
 };
 
 }  // namespace pcod_common

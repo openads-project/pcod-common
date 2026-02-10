@@ -19,7 +19,7 @@
     "device": { "type": "string" },
     "preprocessing": {
       "type": "object",
-      "required": ["max_num_points", "num_point_features", "point_cloud_range", "voxel_size"],
+      "required": ["max_num_points", "num_point_features", "point_cloud_range", "voxel_size", "point_features_normalization"],
       "properties": {
         "max_num_points": { "type": "integer", "minimum": 1 },
         "num_point_features": { "type": "integer", "minimum": 1 },
@@ -39,6 +39,17 @@
             "x": { "type": "number" },
             "y": { "type": "number" },
             "z": { "type": "number" }
+          }
+        },
+        "point_features_normalization": {
+          "type": "object",
+          "required": ["type", "epsilon"],
+          "properties": {
+            "type": { "type": "string", "enum": ["none", "intensity_threshold", "min_max", "z_score"] },
+            "intensity_threshold": { "type": "number" },
+            "min_intensity": { "type": "number" },
+            "max_intensity": { "type": "number" },
+            "epsilon": { "type": "number", "minimum": 0 }
           }
         }
       }

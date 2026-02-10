@@ -147,13 +147,16 @@ YamlNode parse_map(const std::vector<Line>& lines, size_t& index, int indent) {
       node.map[key] = scalar;
       continue;
     }
-    if (index < lines.size() && lines[index].indent > indent) {
-      node.map[key] = parse_value(lines, index, lines[index].indent);
-    } else {
-      YamlNode empty;
-      empty.kind = YamlNode::Kind::kMap;
-      node.map[key] = empty;
+    if (index < lines.size()) {
+      if (lines[index].indent > indent ||
+          (lines[index].indent == indent && lines[index].content.rfind("- ", 0) == 0)) {
+        node.map[key] = parse_value(lines, index, lines[index].indent);
+        continue;
+      }
     }
+    YamlNode empty;
+    empty.kind = YamlNode::Kind::kMap;
+    node.map[key] = empty;
   }
   return node;
 }
@@ -184,21 +187,6 @@ const YamlNode& require_node(const YamlNode& root, const std::vector<std::string
     node = &it->second;
   }
   return *node;
-}
-
-const YamlNode* find_node(const YamlNode& root, const std::vector<std::string>& path) {
-  const YamlNode* node = &root;
-  for (const auto& key : path) {
-    if (node->kind != YamlNode::Kind::kMap) {
-      return nullptr;
-    }
-    auto it = node->map.find(key);
-    if (it == node->map.end()) {
-      return nullptr;
-    }
-    node = &it->second;
-  }
-  return node;
 }
 
 std::string require_scalar_string(const YamlNode& root, const std::vector<std::string>& path) {
@@ -379,6 +367,23 @@ ModelManifest LoadModelManifest(const std::string& path) {
   manifest.preprocessing.voxel_x = require_scalar<float>(root, {"preprocessing", "voxel_size", "x"});
   manifest.preprocessing.voxel_y = require_scalar<float>(root, {"preprocessing", "voxel_size", "y"});
   manifest.preprocessing.voxel_z = require_scalar<float>(root, {"preprocessing", "voxel_size", "z"});
+  manifest.preprocessing.point_features_normalization.type =
+      require_scalar<std::string>(root, {"preprocessing", "point_features_normalization", "type"});
+  manifest.preprocessing.point_features_normalization.epsilon =
+      require_scalar<float>(root, {"preprocessing", "point_features_normalization", "epsilon"});
+  if (manifest.preprocessing.point_features_normalization.type == "intensity_threshold") {
+    manifest.preprocessing.point_features_normalization.intensity_threshold =
+        require_scalar<float>(root, {"preprocessing", "point_features_normalization", "intensity_threshold"});
+  } else if (manifest.preprocessing.point_features_normalization.type == "min_max") {
+    manifest.preprocessing.point_features_normalization.min_intensity =
+        require_scalar<float>(root, {"preprocessing", "point_features_normalization", "min_intensity"});
+    manifest.preprocessing.point_features_normalization.max_intensity =
+        require_scalar<float>(root, {"preprocessing", "point_features_normalization", "max_intensity"});
+  } else if (manifest.preprocessing.point_features_normalization.type == "z_score") {
+    // No additional required fields.
+  } else if (manifest.preprocessing.point_features_normalization.type != "none") {
+    throw std::runtime_error("Unsupported preprocessing.point_features_normalization.type");
+  }
 
   manifest.postprocessing.grid_x = require_scalar<int>(root, {"postprocessing", "grid_size", "x"});
   manifest.postprocessing.grid_y = require_scalar<int>(root, {"postprocessing", "grid_size", "y"});
@@ -405,7 +410,8 @@ ModelManifest LoadModelManifest(const std::string& path) {
   }
   manifest.model.first_up_stride = require_scalar<int>(root, {"model", "first_up_stride"});
 
-  const auto& pillar_map_size_node = require_node(root, {"model", "pillar_map_size"});
+  const std::vector<std::string> pillar_map_size_path = {"model", "pillar_map_size"};
+  const auto& pillar_map_size_node = require_node(root, pillar_map_size_path);
   if (pillar_map_size_node.kind == YamlNode::Kind::kSeq && pillar_map_size_node.seq.size() == 2) {
     manifest.model.pillar_map_size = {parse_scalar<int>(pillar_map_size_node.seq[0].scalar),
                                       parse_scalar<int>(pillar_map_size_node.seq[1].scalar)};
@@ -420,7 +426,8 @@ ModelManifest LoadModelManifest(const std::string& path) {
     throw std::runtime_error("Manifest field 'model.pillar_map_size' must be [x, y]");
   }
 
-  const auto& pillar_map_range_node = require_node(root, {"model", "pillar_map_range"});
+  const std::vector<std::string> pillar_map_range_path = {"model", "pillar_map_range"};
+  const auto& pillar_map_range_node = require_node(root, pillar_map_range_path);
   if (pillar_map_range_node.kind == YamlNode::Kind::kSeq && pillar_map_range_node.seq.size() == 3) {
     manifest.model.pillar_map_range = {
         require_range_node(pillar_map_range_node.seq[0], "model.pillar_map_range[0]"),
@@ -483,6 +490,23 @@ void ValidateModelManifest(const ModelManifest& manifest) {
   }
   if (manifest.model.pillar_map_size[0] <= 0 || manifest.model.pillar_map_size[1] <= 0) {
     throw std::runtime_error("model.pillar_map_size must be positive");
+  }
+  if (manifest.preprocessing.point_features_normalization.epsilon <= 0.0f) {
+    throw std::runtime_error("preprocessing.point_features_normalization.epsilon must be > 0");
+  }
+  const auto& norm = manifest.preprocessing.point_features_normalization;
+  if (norm.type == "intensity_threshold") {
+    if (norm.intensity_threshold <= 0.0f) {
+      throw std::runtime_error("preprocessing.point_features_normalization.intensity_threshold must be > 0");
+    }
+  } else if (norm.type == "min_max") {
+    if (!(norm.min_intensity < norm.max_intensity)) {
+      throw std::runtime_error("preprocessing.point_features_normalization requires min_intensity < max_intensity");
+    }
+  } else if (norm.type == "z_score") {
+    // ok
+  } else if (norm.type != "none") {
+    throw std::runtime_error("preprocessing.point_features_normalization.type is invalid");
   }
 }
 
