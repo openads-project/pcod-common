@@ -26,6 +26,35 @@ def _ddp_rank_info() -> tuple[int, int]:
     return rank, world_size
 
 
+def _resolve_csrc_dir() -> Path:
+    """Locate pcod-common CUDA/C++ sources for both editable and non-editable installs."""
+    env_override = os.getenv("PCOD_COMMON_CSRC_DIR")
+    candidates = []
+    if env_override:
+        candidates.append(Path(env_override))
+    candidates.extend(
+        [
+            # Editable install from /workspace/pcod-common
+            Path(__file__).resolve().parents[3] / "csrc",
+            # Wheel/sdist containing package-local sources
+            Path(__file__).resolve().parents[1] / "csrc",
+            # Typical workspace checkout fallback
+            Path.cwd() / "pcod-common" / "csrc",
+            Path("/workspace/pcod-common/csrc"),
+        ]
+    )
+
+    for candidate in candidates:
+        if (candidate / "rotated_nms.cpp").exists() and (candidate / "rotated_nms_cuda.cu").exists():
+            return candidate
+
+    searched = ", ".join(str(path) for path in candidates)
+    raise FileNotFoundError(
+        "Could not locate pcod-common CUDA sources (rotated_nms.cpp/rotated_nms_cuda.cu). "
+        f"Searched: {searched}. Set PCOD_COMMON_CSRC_DIR to the csrc directory."
+    )
+
+
 def load_rotated_nms_extension(force_build: bool | None = None):
     if "TORCH_EXTENSIONS_DIR" not in os.environ:
         ext_dir = Path.cwd() / ".torch_extensions"
@@ -72,9 +101,9 @@ def load_rotated_nms_extension(force_build: bool | None = None):
                     time.sleep(interval)
         raise RuntimeError("[rotated_nms] Timeout waiting for primary rank to build extension.")
 
-    root_dir = Path(__file__).resolve().parents[3]
-    src_cpp = root_dir / "csrc" / "rotated_nms.cpp"
-    src_cuda = root_dir / "csrc" / "rotated_nms_cuda.cu"
+    csrc_dir = _resolve_csrc_dir()
+    src_cpp = csrc_dir / "rotated_nms.cpp"
+    src_cuda = csrc_dir / "rotated_nms_cuda.cu"
     ext = load(
         name="pcod_common__rotated_nms",
         sources=[str(src_cpp), str(src_cuda)],
