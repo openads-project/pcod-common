@@ -27,6 +27,14 @@ def test_validate_manifest_rejects_wrong_schema_version():
         manifest.validate_manifest(payload)
 
 
+@pytest.mark.parametrize('missing_key', ['model_name', 'precision', 'device', 'preprocessing', 'postprocessing', 'model'])
+def test_validate_manifest_rejects_missing_required_key(missing_key):
+    payload = _minimal_payload()
+    payload.pop(missing_key)
+    with pytest.raises(ValueError, match='missing required key'):
+        manifest.validate_manifest(payload)
+
+
 @pytest.mark.parametrize(
     ('value', 'expected'),
     [

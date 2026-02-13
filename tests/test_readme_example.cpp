@@ -3,6 +3,7 @@
 #include "pcod_common/point_preprocess.hpp"
 
 #include <cassert>
+#include <vector>
 
 int main() {
   pcod_common::PointPreprocessConfig pre_cfg;
@@ -21,23 +22,20 @@ int main() {
   pcod_common::PillarGrid grid = pcod_common::BuildPillarGrid(
       {2, 2}, {{{0.0f, 2.0f}, {0.0f, 2.0f}, {0.0f, 1.0f}}}, 1, 1);
 
-  float focal_logits[4] = {2.0f, -2.0f, 2.0f, -2.0f};
-  float size_posterior[12] = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-                              1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
-  float class_logits[8] = {0.1f, 0.9f, 0.1f, 0.9f, 0.1f, 0.9f, 0.1f, 0.9f};
-  float reg_logits[28] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-                          0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-                          0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-                          0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+  const int num_pillars = 4;
+  const int num_classes = 2;
+  float focal_logits[num_pillars] = {2.0f, -2.0f, 2.0f, -2.0f};
+  std::vector<float> size_posterior(static_cast<std::size_t>(num_pillars * num_classes * 3), 1.0f);
+  float class_logits[num_pillars * num_classes] = {0.1f, 0.9f, 0.1f, 0.9f, 0.1f, 0.9f, 0.1f, 0.9f};
+  std::vector<float> reg_logits(static_cast<std::size_t>(num_pillars * num_classes * 7), 0.0f);
 
   pcod_common::PbodOutputsView view;
   view.focal_logits = focal_logits;
-  view.size_posterior = size_posterior;
+  view.size_posterior = size_posterior.data();
   view.class_logits = class_logits;
-  view.reg_logits = reg_logits;
-  const int num_pillars = 4;
+  view.reg_logits = reg_logits.data();
   view.num_pillars = num_pillars;
-  view.num_classes = 2;
+  view.num_classes = num_classes;
   view.reg_dim = 7;
 
   pcod_common::PbodPostprocessConfig post_cfg;

@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cmath>
+#include <vector>
 
 #include "pcod_common/pillar_grid.hpp"
 
@@ -9,18 +10,20 @@ int main() {
   pcod_common::PillarGrid grid = pcod_common::BuildPillarGrid(
       {1, 1}, {{{0.0f, 1.0f}, {0.0f, 1.0f}, {0.0f, 1.0f}}}, 1, 1);
 
-  float focal_logits[1] = {0.0f};
-  float size_posterior[3] = {1.0f, 1.0f, 1.0f};
-  float class_logits[2] = {0.1f, 0.9f};
-  float reg_logits[7] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+  const int num_pillars = 1;
+  const int num_classes = 2;
+  float focal_logits[num_pillars] = {0.0f};
+  std::vector<float> size_posterior(static_cast<std::size_t>(num_pillars * num_classes * 3), 1.0f);
+  float class_logits[num_pillars * num_classes] = {0.1f, 0.9f};
+  std::vector<float> reg_logits(static_cast<std::size_t>(num_pillars * num_classes * 7), 0.0f);
 
   pcod_common::PbodOutputsView view;
   view.focal_logits = focal_logits;
-  view.size_posterior = size_posterior;
+  view.size_posterior = size_posterior.data();
   view.class_logits = class_logits;
-  view.reg_logits = reg_logits;
-  view.num_pillars = 1;
-  view.num_classes = 2;
+  view.reg_logits = reg_logits.data();
+  view.num_pillars = num_pillars;
+  view.num_classes = num_classes;
   view.reg_dim = 7;
 
   pcod_common::PbodPostprocessConfig config;

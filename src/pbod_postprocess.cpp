@@ -1,6 +1,7 @@
 #include "pcod_common/pbod_postprocess.hpp"
 
 #include <cmath>
+#include <stdexcept>
 
 #include "pcod_common/math.hpp"
 
@@ -15,8 +16,18 @@ std::vector<BoundingBox> DecodePbod(
     const PillarGrid& grid,
     const PbodPostprocessConfig& config) {
   std::vector<BoundingBox> objects;
+  if (outputs.focal_logits == nullptr || outputs.size_posterior == nullptr || outputs.class_logits == nullptr ||
+      outputs.reg_logits == nullptr) {
+    throw std::invalid_argument("DecodePbod requires non-null output tensor pointers.");
+  }
   if (outputs.num_pillars <= 0 || outputs.num_classes <= 0) {
     return objects;
+  }
+  if (outputs.reg_dim > 0 && outputs.reg_dim < 7) {
+    throw std::invalid_argument("DecodePbod requires reg_dim >= 7.");
+  }
+  if (grid.centers.size() < static_cast<std::size_t>(outputs.num_pillars) * 3) {
+    throw std::invalid_argument("DecodePbod received fewer pillar centers than num_pillars.");
   }
 
   const int reg_dim = outputs.reg_dim > 0 ? outputs.reg_dim : 7;

@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cmath>
+#include <stdexcept>
 
 int main() {
   pcod_common::PointPreprocessConfig config;
@@ -39,5 +40,46 @@ int main() {
   config.zero_intensity = true;
   pcod_common::PointPreprocessor zeroed(config);
   assert(std::abs(zeroed.NormalizeIntensity(5.0f)) < 1e-6f);
+
+  {
+    pcod_common::PointPreprocessConfig mm_cfg = config;
+    mm_cfg.zero_intensity = false;
+    mm_cfg.normalization_type = pcod_common::PointFeatureNormalizationType::kMinMax;
+    mm_cfg.min_intensity = 10.0f;
+    mm_cfg.max_intensity = 20.0f;
+    pcod_common::PointPreprocessor minmax(mm_cfg);
+    assert(std::abs(minmax.NormalizeIntensity(5.0f) - 0.0f) < 1e-6f);
+    assert(std::abs(minmax.NormalizeIntensity(15.0f) - 0.5f) < 1e-6f);
+    assert(std::abs(minmax.NormalizeIntensity(25.0f) - 1.0f) < 1e-6f);
+  }
+
+  {
+    pcod_common::PointPreprocessConfig z_cfg = config;
+    z_cfg.zero_intensity = false;
+    z_cfg.normalization_type = pcod_common::PointFeatureNormalizationType::kZScore;
+    z_cfg.epsilon = 1e-3f;
+    pcod_common::PointPreprocessor zscore(z_cfg);
+    zscore.SetZScoreStats(10.0f, 2.0f);
+    assert(std::abs(zscore.NormalizeIntensity(14.0f) - 2.0f) < 1e-6f);
+  }
+
+  {
+    assert(pcod_common::ParsePointFeatureNormalizationType("none") ==
+           pcod_common::PointFeatureNormalizationType::kNone);
+    assert(pcod_common::ParsePointFeatureNormalizationType("intensity_threshold") ==
+           pcod_common::PointFeatureNormalizationType::kIntensityThreshold);
+    assert(pcod_common::ParsePointFeatureNormalizationType("min_max") ==
+           pcod_common::PointFeatureNormalizationType::kMinMax);
+    assert(pcod_common::ParsePointFeatureNormalizationType("z_score") ==
+           pcod_common::PointFeatureNormalizationType::kZScore);
+    bool threw = false;
+    try {
+      (void)pcod_common::ParsePointFeatureNormalizationType("unsupported");
+    } catch (const std::runtime_error&) {
+      threw = true;
+    }
+    assert(threw);
+  }
+
   return 0;
 }
