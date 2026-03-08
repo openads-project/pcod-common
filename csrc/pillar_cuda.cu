@@ -269,7 +269,8 @@ std::vector<torch::Tensor> pillar_stats_cuda(
 
   const int threads = 256;
   const int blocks = (batch_size * num_points + threads - 1) / threads;
-  pillar_stats_kernel<<<blocks, threads, 0, at::cuda::getDefaultCUDAStream()>>>(
+  auto stream = at::cuda::getCurrentCUDAStream();
+  pillar_stats_kernel<<<blocks, threads, 0, stream>>>(
       points_mask.data_ptr<bool>(),
       points_xyz.data_ptr<float>(),
       pillar_ids.data_ptr<int64_t>(),
@@ -338,7 +339,8 @@ std::vector<torch::Tensor> pillar_preprocess_cuda(
 
   const int threads = 256;
   const int blocks = (batch_size * num_points + threads - 1) / threads;
-  pillar_preprocess_pass1_kernel<<<blocks, threads, 0, at::cuda::getDefaultCUDAStream()>>>(
+  auto stream = at::cuda::getCurrentCUDAStream();
+  pillar_preprocess_pass1_kernel<<<blocks, threads, 0, stream>>>(
       points_mask.data_ptr<bool>(),
       points_xyz.data_ptr<float>(),
       pillar_ids.data_ptr<int64_t>(),
@@ -360,7 +362,7 @@ std::vector<torch::Tensor> pillar_preprocess_cuda(
       grid_y);
   C10_CUDA_KERNEL_LAUNCH_CHECK();
 
-  pillar_preprocess_pass2_kernel<<<blocks, threads, 0, at::cuda::getDefaultCUDAStream()>>>(
+  pillar_preprocess_pass2_kernel<<<blocks, threads, 0, stream>>>(
       points_xyz.data_ptr<float>(),
       points_feature.data_ptr<float>(),
       pillar_ids.data_ptr<int64_t>(),

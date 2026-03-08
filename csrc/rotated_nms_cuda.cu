@@ -258,7 +258,7 @@ torch::Tensor rotated_nms_cuda(torch::Tensor boxes, torch::Tensor scores, double
 
   const int threads = 256;
   const dim3 blocks(1);
-  auto stream = at::cuda::getDefaultCUDAStream();
+  auto stream = at::cuda::getCurrentCUDAStream();
   rotated_nms_cuda_kernel<<<blocks, threads, 0, stream>>>(
       boxes_contig.data_ptr<float>(),
       order.data_ptr<int64_t>(),
@@ -311,7 +311,7 @@ torch::Tensor oriented_iou_aligned_cuda(torch::Tensor boxes_a, torch::Tensor box
   auto out = torch::zeros({N}, boxes_a.options().dtype(torch::kFloat));
   const int threads = 256;
   const int blocks = (N + threads - 1) / threads;
-  auto stream = at::cuda::getDefaultCUDAStream();
+  auto stream = at::cuda::getCurrentCUDAStream();
   oriented_iou_aligned_kernel<<<blocks, threads, 0, stream>>>(
       boxes_a_c.data_ptr<float>(), boxes_b_c.data_ptr<float>(), out.data_ptr<float>(), N);
   C10_CUDA_KERNEL_LAUNCH_CHECK();
