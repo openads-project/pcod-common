@@ -190,13 +190,14 @@ def apply_nms(
         if boxes_xywlh.numel() == 0:
             return boxes_xywlh.new_zeros((0,), dtype=torch.long)
         if use_rotated:
-            try:
-                ext = _get_rotated_ext()
-                if boxes_xywlh.is_cuda and scores_vec.is_cuda:
-                    return ext.rotated_nms_cuda(boxes_xywlh, scores_vec, iou_threshold, max_num_objects)
-                return ext.rotated_nms(boxes_xywlh, scores_vec, iou_threshold, max_num_objects)
-            except Exception:
-                return _nms_rotated_torch(boxes_xywlh, scores_vec, iou_threshold, max_num_objects)
+            ext = _get_rotated_ext()
+            if boxes_xywlh.is_cuda and scores_vec.is_cuda:
+                if not hasattr(ext, "rotated_nms_cuda"):
+                    raise RuntimeError("Rotated NMS extension missing CUDA NMS entrypoint.")
+                return ext.rotated_nms_cuda(boxes_xywlh, scores_vec, iou_threshold, max_num_objects)
+            if not hasattr(ext, "rotated_nms"):
+                raise RuntimeError("Rotated NMS extension missing CPU NMS entrypoint.")
+            return ext.rotated_nms(boxes_xywlh, scores_vec, iou_threshold, max_num_objects)
         return _nms_axis_aligned(boxes_xywlh, scores_vec, iou_threshold, max_num_objects)
 
     for class_label in unique_labels.tolist():
