@@ -148,30 +148,23 @@ def test_apply_nms_per_class_topk_keeps_per_class_results():
     assert sorted([round(float(v), 3) for v in out_scores.tolist()]) == [0.7, 0.8]
 
 
-def test_apply_nms_rotated_falls_back_when_extension_fails(monkeypatch: pytest.MonkeyPatch):
+def test_apply_nms_rotated_fails_fast_when_extension_fails(monkeypatch: pytest.MonkeyPatch):
     def _raise_ext():
         raise RuntimeError('extension unavailable')
 
-    def _fallback(boxes_xywlh, scores_vec, iou_threshold: float, max_num_objects: int):
-        return torch.tensor([0], dtype=torch.long, device=boxes_xywlh.device)
-
     monkeypatch.setattr(postprocess, '_get_rotated_ext', _raise_ext)
-    monkeypatch.setattr(postprocess, '_nms_rotated_torch', _fallback)
 
     boxes = torch.tensor([_make_box(0.0, 0.0), _make_box(0.1, 0.0)], dtype=torch.float32)
     scores = torch.tensor([0.9, 0.8], dtype=torch.float32)
     labels = torch.tensor([0, 0], dtype=torch.long)
 
-    out_boxes, out_scores, out_labels = apply_nms(
-        boxes,
-        scores,
-        labels,
-        score_thresholds=[0.0],
-        iou_threshold=0.1,
-        max_num_objects=10,
-        use_rotated=True,
-    )
-
-    assert out_boxes.shape[0] == 1
-    assert out_labels.tolist() == [0]
-    assert [round(float(v), 3) for v in out_scores.tolist()] == [0.9]
+    with pytest.raises(RuntimeError, match='extension unavailable'):
+        apply_nms(
+            boxes,
+            scores,
+            labels,
+            score_thresholds=[0.0],
+            iou_threshold=0.1,
+            max_num_objects=10,
+            use_rotated=True,
+        )
