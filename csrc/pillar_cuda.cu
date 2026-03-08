@@ -12,7 +12,7 @@ __global__ void pillar_stats_kernel(
     const bool* points_mask,
     const float* points_xyz,
     int64_t* pillar_ids_out,
-    float* point_count,
+    int32_t* point_count,
     float* xyz_sum,
     const int64_t batch_size,
     const int64_t num_points,
@@ -58,7 +58,7 @@ __global__ void pillar_stats_kernel(
 
   pillar_ids_out[mask_offset] = pillar_id;
   const int64_t count_offset = b * num_pillars + pillar_id;
-  atomicAdd(point_count + count_offset, 1.0f);
+  atomicAdd(point_count + count_offset, 1);
   const int64_t sum_offset = (b * num_pillars + pillar_id) * 3;
   atomicAdd(xyz_sum + sum_offset + 0, x);
   atomicAdd(xyz_sum + sum_offset + 1, y);
@@ -259,12 +259,13 @@ std::vector<torch::Tensor> pillar_stats_cuda(
 
   auto opts_i64 = points_mask.options().dtype(torch::kInt64);
   auto opts_f = points_xyz.options().dtype(torch::kFloat);
+  auto opts_i32 = points_xyz.options().dtype(torch::kInt32);
   const int64_t batch_size = points_mask.size(0);
   const int64_t num_points = points_mask.size(1);
   const int64_t num_pillars = grid_x * grid_y;
 
   auto pillar_ids = torch::full({batch_size, num_points}, -1, opts_i64);
-  auto point_count = torch::zeros({batch_size, num_pillars}, opts_f);
+  auto point_count = torch::zeros({batch_size, num_pillars}, opts_i32);
   auto xyz_sum = torch::zeros({batch_size, num_pillars, 3}, opts_f);
 
   const int threads = 256;
@@ -274,7 +275,7 @@ std::vector<torch::Tensor> pillar_stats_cuda(
       points_mask.data_ptr<bool>(),
       points_xyz.data_ptr<float>(),
       pillar_ids.data_ptr<int64_t>(),
-      point_count.data_ptr<float>(),
+      point_count.data_ptr<int32_t>(),
       xyz_sum.data_ptr<float>(),
       batch_size,
       num_points,

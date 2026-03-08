@@ -256,7 +256,7 @@ torch::Tensor rotated_nms_cuda(torch::Tensor boxes, torch::Tensor scores, double
   auto suppressed = torch::zeros({num_boxes}, boxes.options().dtype(torch::kBool));
   auto selected = torch::zeros({num_boxes}, boxes.options().dtype(torch::kBool));
 
-  const int threads = 256;
+  const int threads = 512;
   const dim3 blocks(1);
   auto stream = at::cuda::getCurrentCUDAStream();
   rotated_nms_cuda_kernel<<<blocks, threads, 0, stream>>>(
