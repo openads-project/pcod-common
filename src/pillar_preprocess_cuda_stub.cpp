@@ -24,4 +24,14 @@ bool PillarPreprocessCudaContext::run(const PillarPreprocessPoint*, std::int32_t
   return false;
 }
 
+bool PillarPreprocessCudaContext::runToDevice(const PillarPreprocessPoint*, std::int32_t,
+                                              const PillarPreprocessCudaConfig&,
+                                              const PillarPreprocessCudaDeviceOutputs&,
+                                              std::string* error_message) {
+  if (error_message != nullptr) {
+    *error_message = "CUDA preprocessing is not available in this build";
+  }
+  return false;
+}
+
 }  // namespace pcod_common

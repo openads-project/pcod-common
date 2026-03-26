@@ -211,20 +211,13 @@ PillarPreprocessCudaContext& PillarPreprocessCudaContext::operator=(PillarPrepro
 
 bool PillarPreprocessCudaContext::isAvailable() const { return HasCudaPillarPreprocessSupport(); }
 
-bool PillarPreprocessCudaContext::run(const PillarPreprocessPoint* points, std::int32_t num_points,
-                                      const PillarPreprocessCudaConfig& config,
-                                      const PillarPreprocessCudaOutputs& outputs, std::string* error_message) {
-  if (!isAvailable()) {
-    if (error_message != nullptr) {
-      *error_message = "CUDA preprocessing is not available at runtime";
-    }
-    return false;
-  }
+namespace {
 
-  if (points == nullptr || outputs.point_features == nullptr || outputs.pillar_ids == nullptr ||
-      outputs.valid_mask == nullptr || outputs.pillar_masks == nullptr) {
+bool ValidateRunArguments(const PillarPreprocessPoint* points, std::int32_t num_points,
+                          const PillarPreprocessCudaConfig& config, std::string* error_message) {
+  if (points == nullptr && num_points > 0) {
     if (error_message != nullptr) {
-      *error_message = "CUDA preprocessing received null input/output buffers";
+      *error_message = "CUDA preprocessing received null input points";
     }
     return false;
   }
@@ -233,6 +226,34 @@ bool PillarPreprocessCudaContext::run(const PillarPreprocessPoint* points, std::
     if (error_message != nullptr) {
       *error_message = "CUDA preprocessing received invalid dimensions";
     }
+    return false;
+  }
+
+  return true;
+}
+
+}  // namespace
+
+bool PillarPreprocessCudaContext::runToDevice(const PillarPreprocessPoint* points, std::int32_t num_points,
+                                              const PillarPreprocessCudaConfig& config,
+                                              const PillarPreprocessCudaDeviceOutputs& outputs,
+                                              std::string* error_message) {
+  if (!isAvailable()) {
+    if (error_message != nullptr) {
+      *error_message = "CUDA preprocessing is not available at runtime";
+    }
+    return false;
+  }
+
+  if (outputs.point_features == nullptr || outputs.pillar_ids == nullptr || outputs.valid_mask == nullptr ||
+      outputs.pillar_masks == nullptr) {
+    if (error_message != nullptr) {
+      *error_message = "CUDA preprocessing received null input/output buffers";
+    }
+    return false;
+  }
+
+  if (!ValidateRunArguments(points, num_points, config, error_message)) {
     return false;
   }
 
@@ -258,24 +279,6 @@ bool PillarPreprocessCudaContext::run(const PillarPreprocessPoint* points, std::
                      impl_->point_capacity, config.max_num_points, "cudaMalloc(points_device)")) {
     return false;
   }
-  if (!ensure_buffer(impl_->pillar_ids_device, static_cast<std::size_t>(config.max_num_points) * sizeof(std::int64_t),
-                     impl_->point_capacity, config.max_num_points, "cudaMalloc(pillar_ids_device)")) {
-    return false;
-  }
-  if (!ensure_buffer(impl_->valid_mask_device, static_cast<std::size_t>(config.max_num_points) * sizeof(bool),
-                     impl_->point_capacity, config.max_num_points, "cudaMalloc(valid_mask_device)")) {
-    return false;
-  }
-  if (!ensure_buffer(impl_->point_features_device,
-                     static_cast<std::size_t>(config.max_num_points) * static_cast<std::size_t>(config.feature_dim) *
-                         sizeof(float),
-                     impl_->feature_dim_capacity, config.feature_dim, "cudaMalloc(point_features_device)")) {
-    return false;
-  }
-  if (!ensure_buffer(impl_->pillar_masks_device, static_cast<std::size_t>(config.num_pillars) * sizeof(bool),
-                     impl_->num_pillars_capacity, config.num_pillars, "cudaMalloc(pillar_masks_device)")) {
-    return false;
-  }
   if (!ensure_buffer(impl_->pillar_counts_device, static_cast<std::size_t>(config.num_pillars) * sizeof(std::int32_t),
                      impl_->num_pillars_capacity, config.num_pillars, "cudaMalloc(pillar_counts_device)")) {
     return false;
@@ -295,6 +298,10 @@ bool PillarPreprocessCudaContext::run(const PillarPreprocessPoint* points, std::
   const int selected_point_blocks = (num_points + kThreadsPerBlock - 1) / kThreadsPerBlock;
   const int pillar_blocks = (config.num_pillars + kThreadsPerBlock - 1) / kThreadsPerBlock;
   const std::int64_t sentinel = static_cast<std::int64_t>(config.num_pillars);
+  auto* point_features_device = outputs.point_features;
+  auto* pillar_ids_device = outputs.pillar_ids;
+  auto* valid_mask_device = outputs.valid_mask;
+  auto* pillar_masks_device = outputs.pillar_masks;
 
   if (!CheckCuda(cudaMemcpy(impl_->points_device, points,
                             static_cast<std::size_t>(num_points) * sizeof(PillarPreprocessPoint),
@@ -303,13 +310,13 @@ bool PillarPreprocessCudaContext::run(const PillarPreprocessPoint* points, std::
     return false;
   }
 
-  InitializePointOutputsKernel<<<point_blocks, kThreadsPerBlock>>>(impl_->point_features_device, impl_->pillar_ids_device,
-                                                                   impl_->valid_mask_device, config.max_num_points,
+  InitializePointOutputsKernel<<<point_blocks, kThreadsPerBlock>>>(point_features_device, pillar_ids_device,
+                                                                   valid_mask_device, config.max_num_points,
                                                                    config.feature_dim, sentinel);
   if (!CheckCuda(cudaGetLastError(), "InitializePointOutputsKernel launch", error_message)) {
     return false;
   }
-  if (!CheckCuda(cudaMemset(impl_->pillar_masks_device, 0, static_cast<std::size_t>(config.num_pillars) * sizeof(bool)),
+  if (!CheckCuda(cudaMemset(pillar_masks_device, 0, static_cast<std::size_t>(config.num_pillars) * sizeof(bool)),
                  "cudaMemset(pillar_masks_device)", error_message)) {
     return false;
   }
@@ -330,24 +337,85 @@ bool PillarPreprocessCudaContext::run(const PillarPreprocessPoint* points, std::
 
   if (num_points > 0) {
     PreprocessPass1Kernel<<<selected_point_blocks, kThreadsPerBlock>>>(
-        impl_->points_device, num_points, config, impl_->pillar_ids_device, impl_->valid_mask_device,
+        impl_->points_device, num_points, config, pillar_ids_device, valid_mask_device,
         impl_->pillar_counts_device, impl_->pillar_sum_device, impl_->pillar_sq_sum_device);
     if (!CheckCuda(cudaGetLastError(), "PreprocessPass1Kernel launch", error_message)) {
       return false;
     }
 
     FinalizePillarMasksKernel<<<pillar_blocks, kThreadsPerBlock>>>(impl_->pillar_counts_device, config.num_pillars,
-                                                                   impl_->pillar_masks_device);
+                                                                   pillar_masks_device);
     if (!CheckCuda(cudaGetLastError(), "FinalizePillarMasksKernel launch", error_message)) {
       return false;
     }
 
     PreprocessPass2Kernel<<<selected_point_blocks, kThreadsPerBlock>>>(
-        impl_->points_device, num_points, config, impl_->pillar_ids_device, impl_->pillar_counts_device,
-        impl_->pillar_sum_device, impl_->pillar_sq_sum_device, impl_->point_features_device);
+        impl_->points_device, num_points, config, pillar_ids_device, impl_->pillar_counts_device, impl_->pillar_sum_device,
+        impl_->pillar_sq_sum_device, point_features_device);
     if (!CheckCuda(cudaGetLastError(), "PreprocessPass2Kernel launch", error_message)) {
       return false;
     }
+  }
+
+  return CheckCuda(cudaDeviceSynchronize(), "cudaDeviceSynchronize", error_message);
+}
+
+bool PillarPreprocessCudaContext::run(const PillarPreprocessPoint* points, std::int32_t num_points,
+                                      const PillarPreprocessCudaConfig& config,
+                                      const PillarPreprocessCudaOutputs& outputs, std::string* error_message) {
+  if (outputs.point_features == nullptr || outputs.pillar_ids == nullptr || outputs.valid_mask == nullptr ||
+      outputs.pillar_masks == nullptr) {
+    if (error_message != nullptr) {
+      *error_message = "CUDA preprocessing received null input/output buffers";
+    }
+    return false;
+  }
+
+  if (!ValidateRunArguments(points, num_points, config, error_message)) {
+    return false;
+  }
+
+  auto ensure_buffer = [&](auto*& ptr, std::size_t bytes, auto& capacity_value, auto needed_capacity,
+                           const char* name) -> bool {
+    if (capacity_value >= needed_capacity && ptr != nullptr) {
+      return true;
+    }
+    if (ptr != nullptr) {
+      if (!CheckCuda(cudaFree(ptr), name, error_message)) {
+        return false;
+      }
+      ptr = nullptr;
+    }
+    if (!CheckCuda(cudaMalloc(&ptr, bytes), name, error_message)) {
+      return false;
+    }
+    capacity_value = needed_capacity;
+    return true;
+  };
+
+  if (!ensure_buffer(impl_->pillar_ids_device, static_cast<std::size_t>(config.max_num_points) * sizeof(std::int64_t),
+                     impl_->point_capacity, config.max_num_points, "cudaMalloc(pillar_ids_device)")) {
+    return false;
+  }
+  if (!ensure_buffer(impl_->valid_mask_device, static_cast<std::size_t>(config.max_num_points) * sizeof(bool),
+                     impl_->point_capacity, config.max_num_points, "cudaMalloc(valid_mask_device)")) {
+    return false;
+  }
+  if (!ensure_buffer(impl_->point_features_device,
+                     static_cast<std::size_t>(config.max_num_points) * static_cast<std::size_t>(config.feature_dim) *
+                         sizeof(float),
+                     impl_->feature_dim_capacity, config.feature_dim, "cudaMalloc(point_features_device)")) {
+    return false;
+  }
+  if (!ensure_buffer(impl_->pillar_masks_device, static_cast<std::size_t>(config.num_pillars) * sizeof(bool),
+                     impl_->num_pillars_capacity, config.num_pillars, "cudaMalloc(pillar_masks_device)")) {
+    return false;
+  }
+
+  const PillarPreprocessCudaDeviceOutputs device_outputs{impl_->point_features_device, impl_->pillar_ids_device,
+                                                         impl_->valid_mask_device, impl_->pillar_masks_device};
+  if (!runToDevice(points, num_points, config, device_outputs, error_message)) {
+    return false;
   }
 
   if (!CheckCuda(cudaMemcpy(outputs.point_features, impl_->point_features_device,
@@ -374,7 +442,7 @@ bool PillarPreprocessCudaContext::run(const PillarPreprocessPoint* points, std::
     return false;
   }
 
-  return CheckCuda(cudaDeviceSynchronize(), "cudaDeviceSynchronize", error_message);
+  return true;
 }
 
 }  // namespace pcod_common

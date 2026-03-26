@@ -45,6 +45,13 @@ struct PillarPreprocessCudaOutputs {
   bool* pillar_masks = nullptr;
 };
 
+struct PillarPreprocessCudaDeviceOutputs {
+  float* point_features = nullptr;
+  std::int64_t* pillar_ids = nullptr;
+  bool* valid_mask = nullptr;
+  bool* pillar_masks = nullptr;
+};
+
 bool HasCudaPillarPreprocessSupport();
 
 class PillarPreprocessCudaContext {
@@ -60,6 +67,8 @@ class PillarPreprocessCudaContext {
   bool isAvailable() const;
   bool run(const PillarPreprocessPoint* points, std::int32_t num_points, const PillarPreprocessCudaConfig& config,
            const PillarPreprocessCudaOutputs& outputs, std::string* error_message);
+  bool runToDevice(const PillarPreprocessPoint* points, std::int32_t num_points, const PillarPreprocessCudaConfig& config,
+                   const PillarPreprocessCudaDeviceOutputs& outputs, std::string* error_message);
 
  private:
   struct Impl;
