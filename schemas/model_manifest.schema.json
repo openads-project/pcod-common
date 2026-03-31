@@ -34,7 +34,7 @@
         },
         "voxel_size": {
           "type": "object",
-          "required": ["x", "y", "z"],
+          "required": ["x", "y"],
           "properties": {
             "x": { "type": "number" },
             "y": { "type": "number" },

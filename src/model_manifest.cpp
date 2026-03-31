@@ -366,7 +366,7 @@ ModelManifest LoadModelManifest(const std::string& path) {
   manifest.preprocessing.z_range = require_range(root, {"preprocessing", "point_cloud_range", "z"});
   manifest.preprocessing.voxel_x = require_scalar<float>(root, {"preprocessing", "voxel_size", "x"});
   manifest.preprocessing.voxel_y = require_scalar<float>(root, {"preprocessing", "voxel_size", "y"});
-  manifest.preprocessing.voxel_z = require_scalar<float>(root, {"preprocessing", "voxel_size", "z"});
+  manifest.preprocessing.voxel_z = manifest.preprocessing.z_range[1] - manifest.preprocessing.z_range[0];
   manifest.preprocessing.point_features_normalization.type =
       require_scalar<std::string>(root, {"preprocessing", "point_features_normalization", "type"});
   manifest.preprocessing.point_features_normalization.epsilon =
