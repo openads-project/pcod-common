@@ -17,7 +17,9 @@ struct PillarPreprocessPoint {
 
 struct PillarPreprocessCudaConfig {
   float x_min = 0.0f;
+  float x_max = 0.0f;
   float y_min = 0.0f;
+  float y_max = 0.0f;
   float z_min = 0.0f;
   float z_max = 0.0f;
   float voxel_x = 0.0f;

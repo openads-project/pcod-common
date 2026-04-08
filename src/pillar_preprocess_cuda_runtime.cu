@@ -68,8 +68,15 @@ __global__ void PreprocessPass1Kernel(const PillarPreprocessPoint* points, std::
   }
 
   const PillarPreprocessPoint point = points[idx];
-  const int ix = static_cast<int>((point.x - config.x_min) / config.voxel_x);
-  const int iy = static_cast<int>((point.y - config.y_min) / config.voxel_y);
+  if (point.x < config.x_min || point.x >= config.x_max || point.y < config.y_min || point.y >= config.y_max ||
+      point.z < config.z_min || point.z >= config.z_max) {
+    pillar_ids[idx] = static_cast<std::int64_t>(config.num_pillars);
+    valid_mask[idx] = false;
+    return;
+  }
+
+  const int ix = max(0, min(static_cast<int>((point.x - config.x_min) / config.voxel_x), config.grid_x - 1));
+  const int iy = max(0, min(static_cast<int>((point.y - config.y_min) / config.voxel_y), config.grid_y - 1));
   const int pillar_id = ix * config.grid_y + iy;
 
   pillar_ids[idx] = static_cast<std::int64_t>(pillar_id);
@@ -105,6 +112,9 @@ __global__ void PreprocessPass2Kernel(const PillarPreprocessPoint* points, std::
 
   const PillarPreprocessPoint point = points[idx];
   const int pillar_id = static_cast<int>(pillar_ids[idx]);
+  if (pillar_id < 0 || pillar_id >= config.num_pillars) {
+    return;
+  }
   const std::size_t sum_offset = static_cast<std::size_t>(pillar_id) * 3u;
   const int raw_point_count = pillar_counts[pillar_id];
   const int point_count = raw_point_count > 0 ? raw_point_count : 1;
@@ -117,8 +127,8 @@ __global__ void PreprocessPass2Kernel(const PillarPreprocessPoint* points, std::
   const float mean_y2 = pillar_sq_sum[sum_offset + 1u] * inv_count;
   const float mean_z2 = pillar_sq_sum[sum_offset + 2u] * inv_count;
 
-  const int ix = static_cast<int>((point.x - config.x_min) / config.voxel_x);
-  const int iy = static_cast<int>((point.y - config.y_min) / config.voxel_y);
+  const int ix = max(0, min(static_cast<int>((point.x - config.x_min) / config.voxel_x), config.grid_x - 1));
+  const int iy = max(0, min(static_cast<int>((point.y - config.y_min) / config.voxel_y), config.grid_y - 1));
   const float center_x = config.x_min + (static_cast<float>(ix) + 0.5f) * config.voxel_x;
   const float center_y = config.y_min + (static_cast<float>(iy) + 0.5f) * config.voxel_y;
   const float r2 = point.x * point.x + point.y * point.y;
@@ -225,6 +235,15 @@ bool ValidateRunArguments(const PillarPreprocessPoint* points, std::int32_t num_
   if (num_points < 0 || num_points > config.max_num_points || config.num_pillars <= 0 || config.feature_dim <= 0) {
     if (error_message != nullptr) {
       *error_message = "CUDA preprocessing received invalid dimensions";
+    }
+    return false;
+  }
+
+  if (config.grid_x <= 0 || config.grid_y <= 0 || config.num_pillars != config.grid_x * config.grid_y ||
+      !(config.x_min < config.x_max) || !(config.y_min < config.y_max) || !(config.z_min < config.z_max) ||
+      !(config.voxel_x > 0.0f) || !(config.voxel_y > 0.0f)) {
+    if (error_message != nullptr) {
+      *error_message = "CUDA preprocessing received inconsistent grid/range configuration";
     }
     return false;
   }
