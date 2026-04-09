@@ -3,6 +3,8 @@ project(pcod_common LANGUAGES CXX)
 
 option(PCOD_COMMON_BUILD_TESTS "Build pcod-common tests" ON)
 
+find_package(yaml-cpp REQUIRED)
+
 add_library(pcod_common STATIC
   src/bounding_box.cpp
   src/nms.cpp
@@ -22,6 +24,8 @@ target_include_directories(pcod_common
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
+
+target_link_libraries(pcod_common PUBLIC yaml-cpp)
 
 if(PCOD_COMMON_BUILD_TESTS)
   enable_testing()

@@ -13,8 +13,8 @@ int main() {
   pre_cfg.y_max = 1.0f;
   pre_cfg.z_min = -1.0f;
   pre_cfg.z_max = 1.0f;
-  pre_cfg.normalization_type = pcod_common::PointFeatureNormalizationType::kIntensityThreshold;
-  pre_cfg.intensity_threshold = 10.0f;
+  pre_cfg.normalization_type = pcod_common::PointFeatureNormalizationType::kValueThreshold;
+  pre_cfg.value_threshold = 10.0f;
 
   pcod_common::PointPreprocessor preprocessor(pre_cfg);
   assert(preprocessor.IsPointValid(0.5f, 0.1f, 0.0f));

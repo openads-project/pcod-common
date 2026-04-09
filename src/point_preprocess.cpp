@@ -8,8 +8,8 @@ PointFeatureNormalizationType ParsePointFeatureNormalizationType(const std::stri
   if (value == "none") {
     return PointFeatureNormalizationType::kNone;
   }
-  if (value == "intensity_threshold") {
-    return PointFeatureNormalizationType::kIntensityThreshold;
+  if (value == "value_threshold") {
+    return PointFeatureNormalizationType::kValueThreshold;
   }
   if (value == "min_max") {
     return PointFeatureNormalizationType::kMinMax;
@@ -64,23 +64,20 @@ void PointPreprocessor::SetZScoreStats(float mean, float stddev) {
   z_score_std_ = std::abs(stddev) > config_.epsilon ? stddev : config_.epsilon;
 }
 
-float PointPreprocessor::NormalizeIntensity(float intensity) const {
-  if (config_.zero_intensity) {
-    return 0.0f;
-  }
+float PointPreprocessor::NormalizePointFeature(float intensity) const {
   if (config_.normalization_type == PointFeatureNormalizationType::kNone) {
     return intensity;
   }
-  if (config_.normalization_type == PointFeatureNormalizationType::kIntensityThreshold) {
-    if (config_.intensity_threshold <= 0.0f) {
+  if (config_.normalization_type == PointFeatureNormalizationType::kValueThreshold) {
+    if (config_.value_threshold <= 0.0f) {
       return intensity;
     }
-    const float clipped = std::min(std::max(intensity, 0.0f), config_.intensity_threshold);
-    return clipped / std::max(config_.intensity_threshold, config_.epsilon);
+    const float clipped = std::min(std::max(intensity, 0.0f), config_.value_threshold);
+    return clipped / std::max(config_.value_threshold, config_.epsilon);
   }
   if (config_.normalization_type == PointFeatureNormalizationType::kMinMax) {
-    const float denom = std::max(config_.max_intensity - config_.min_intensity, config_.epsilon);
-    const float scaled = (intensity - config_.min_intensity) / denom;
+    const float denom = std::max(config_.max_value - config_.min_value, config_.epsilon);
+    const float scaled = (intensity - config_.min_value) / denom;
     return std::min(std::max(scaled, 0.0f), 1.0f);
   }
   if (config_.normalization_type == PointFeatureNormalizationType::kZScore) {
