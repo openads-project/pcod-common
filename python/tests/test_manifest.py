@@ -183,6 +183,13 @@ def test_validate_manifest_requires_runtime_value_threshold_for_value_threshold_
         manifest.validate_manifest(payload)
 
 
+def test_validate_manifest_rejects_frozen_value_threshold_key():
+    payload = _minimal_payload()
+    payload["frozen_contract"]["preprocessing"]["point_feature_normalization"]["value_threshold"] = 1.0
+    with pytest.raises(ValueError, match="unsupported key"):
+        manifest.validate_manifest(payload)
+
+
 def test_validate_manifest_accepts_per_class_nms_thresholds():
     payload = _minimal_payload()
     payload["frozen_contract"]["postprocessing"]["num_classes"] = 2
