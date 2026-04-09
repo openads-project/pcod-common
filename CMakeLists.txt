@@ -4,6 +4,7 @@ project(pcod_common LANGUAGES CXX)
 option(PCOD_COMMON_BUILD_TESTS "Build pcod-common tests" ON)
 
 find_package(yaml-cpp REQUIRED)
+option(PCOD_COMMON_ENABLE_CUDA "Build optional CUDA components for pcod-common" OFF)
 
 add_library(pcod_common STATIC
   src/bounding_box.cpp
@@ -26,6 +27,30 @@ target_include_directories(pcod_common
 )
 
 target_link_libraries(pcod_common PUBLIC yaml-cpp)
+
+if(PCOD_COMMON_ENABLE_CUDA)
+  include(CheckLanguage)
+  check_language(CUDA)
+  if(CMAKE_CUDA_COMPILER)
+    enable_language(CUDA)
+    find_package(CUDAToolkit REQUIRED)
+    target_sources(pcod_common PRIVATE src/pillar_preprocess_cuda_runtime.cu)
+    target_link_libraries(pcod_common PRIVATE CUDA::cudart)
+    set_source_files_properties(src/pillar_preprocess_cuda_runtime.cu PROPERTIES LANGUAGE CUDA)
+    set_target_properties(pcod_common PROPERTIES
+      CUDA_STANDARD 17
+      CUDA_STANDARD_REQUIRED YES
+      CUDA_ARCHITECTURES "70;75;86;89;90;90-virtual"
+      CUDA_SEPARABLE_COMPILATION ON
+    )
+    message(STATUS "CUDA compiler detected for pcod_common; building runtime capability probe")
+  else()
+    target_sources(pcod_common PRIVATE src/pillar_preprocess_cuda_stub.cpp)
+    message(WARNING "PCOD_COMMON_ENABLE_CUDA=ON but no CUDA compiler was found; building CPU-only pcod_common")
+  endif()
+else()
+  target_sources(pcod_common PRIVATE src/pillar_preprocess_cuda_stub.cpp)
+endif()
 
 if(PCOD_COMMON_BUILD_TESTS)
   enable_testing()
