@@ -24,9 +24,9 @@ struct PillarPreprocessCudaConfig {
   float z_max = 0.0f;
   float voxel_x = 0.0f;
   float voxel_y = 0.0f;
-  float intensity_threshold = 1.0f;
-  float min_intensity = 0.0f;
-  float max_intensity = 1.0f;
+  float value_threshold = 1.0f;
+  float min_value = 0.0f;
+  float max_value = 1.0f;
   float epsilon = 1e-6f;
   float z_score_mean = 0.0f;
   float z_score_std = 1.0f;
@@ -37,7 +37,6 @@ struct PillarPreprocessCudaConfig {
   std::int32_t max_num_points = 0;
   std::int32_t feature_dim = 0;
   PointFeatureNormalizationType normalization_type = PointFeatureNormalizationType::kNone;
-  bool zero_intensity = false;
 };
 
 struct PillarPreprocessCudaOutputs {

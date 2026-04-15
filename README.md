@@ -29,6 +29,7 @@ This repository provides:
 ## Build (C++)
 
 ```sh
+apt-get update && apt-get install -y cmake g++ pkg-config libyaml-cpp-dev
 cmake -S . -B build -DPCOD_COMMON_BUILD_TESTS=ON
 cmake --build build
 ctest --test-dir build
@@ -102,8 +103,8 @@ int main() {
   pre_cfg.y_max = 1.0f;
   pre_cfg.z_min = -1.0f;
   pre_cfg.z_max = 1.0f;
-  pre_cfg.normalization_type = pcod_common::PointFeatureNormalizationType::kIntensityThreshold;
-  pre_cfg.intensity_threshold = 10.0f;
+  pre_cfg.normalization_type = pcod_common::PointFeatureNormalizationType::kValueThreshold;
+  pre_cfg.value_threshold = 10.0f;
 
   // 1) Basic point filtering (range checks + optional masks).
   pcod_common::PointPreprocessor preprocessor(pre_cfg);
@@ -147,7 +148,17 @@ int main() {
 
 ## Model Manifest
 
-Training export emits a `model_manifest.yml` file alongside the model artifacts. ROS inference loads this manifest to validate preprocessing/postprocessing expectations. The JSON schema is in `schemas/model_manifest.schema.json`.
+Training export emits one canonical YAML file named `model_manifest.yml` inside every exported bundle.
+The manifest is split into three sections:
+
+- `artifact`: bundle metadata and file references that always point to files inside the bundle
+- `frozen_contract`: non-overridable inference contract that must match the exported model exactly
+- `runtime_defaults`: exported defaults for inference-time behavior that may be overridden by the inference user
+
+ROS inference treats `frozen_contract` as mandatory source-of-truth model configuration and uses `runtime_defaults` as the initial values for overridable ROS parameters such as `preprocessing.point_feature.value_threshold` and NMS thresholds.
+The schema lives in `schemas/model_manifest.schema.json`.
+Both the Python and C++ loaders validate the same canonical structure, reject unsupported keys, and require bundle-relative file references.
+The C++ implementation parses YAML via `yaml-cpp` rather than a custom YAML subset parser.
 
 ## Integration Notes
 

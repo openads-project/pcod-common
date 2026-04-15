@@ -2,6 +2,18 @@ cmake_minimum_required(VERSION 3.16)
 project(pcod_common LANGUAGES CXX)
 
 option(PCOD_COMMON_BUILD_TESTS "Build pcod-common tests" ON)
+
+find_package(yaml-cpp QUIET CONFIG)
+if(TARGET yaml-cpp::yaml-cpp)
+  set(PCOD_COMMON_YAML_CPP_TARGET yaml-cpp::yaml-cpp)
+elseif(TARGET yaml-cpp)
+  set(PCOD_COMMON_YAML_CPP_TARGET yaml-cpp)
+else()
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(YAML_CPP REQUIRED IMPORTED_TARGET yaml-cpp)
+  set(PCOD_COMMON_YAML_CPP_TARGET PkgConfig::YAML_CPP)
+endif()
+
 option(PCOD_COMMON_ENABLE_CUDA "Build optional CUDA components for pcod-common" OFF)
 
 add_library(pcod_common STATIC
@@ -23,6 +35,8 @@ target_include_directories(pcod_common
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
+
+target_link_libraries(pcod_common PUBLIC ${PCOD_COMMON_YAML_CPP_TARGET})
 
 if(PCOD_COMMON_ENABLE_CUDA)
   include(CheckLanguage)
@@ -66,6 +80,27 @@ if(PCOD_COMMON_BUILD_TESTS)
   target_link_libraries(pcod_common_test_pbod_postprocess PRIVATE pcod_common)
   add_test(NAME pcod_common_test_pbod_postprocess COMMAND pcod_common_test_pbod_postprocess)
 
+  add_executable(pcod_common_test_pbod_postprocess_validation tests/test_pbod_postprocess_validation.cpp)
+  target_link_libraries(pcod_common_test_pbod_postprocess_validation PRIVATE pcod_common)
+  add_test(NAME pcod_common_test_pbod_postprocess_validation COMMAND pcod_common_test_pbod_postprocess_validation)
+
+  add_executable(pcod_common_test_pillar_grid tests/test_pillar_grid.cpp)
+  target_link_libraries(pcod_common_test_pillar_grid PRIVATE pcod_common)
+  add_test(NAME pcod_common_test_pillar_grid COMMAND pcod_common_test_pillar_grid)
+
+  add_executable(pcod_common_test_bounding_box tests/test_bounding_box.cpp)
+  target_link_libraries(pcod_common_test_bounding_box PRIVATE pcod_common)
+  add_test(NAME pcod_common_test_bounding_box COMMAND pcod_common_test_bounding_box)
+
+  add_executable(pcod_common_test_manifest_validation tests/test_manifest_validation.cpp)
+  target_link_libraries(pcod_common_test_manifest_validation PRIVATE pcod_common)
+  add_test(NAME pcod_common_test_manifest_validation COMMAND pcod_common_test_manifest_validation)
+
+  add_executable(pcod_common_test_py_cpp_contract tests/test_py_cpp_contract.cpp)
+  target_link_libraries(pcod_common_test_py_cpp_contract PRIVATE pcod_common)
+  target_compile_definitions(pcod_common_test_py_cpp_contract PRIVATE PCOD_COMMON_PYTHON_DIR="${CMAKE_CURRENT_SOURCE_DIR}/python")
+  add_test(NAME pcod_common_test_py_cpp_contract COMMAND pcod_common_test_py_cpp_contract)
+
   add_executable(pcod_common_test_readme_example tests/test_readme_example.cpp)
   target_link_libraries(pcod_common_test_readme_example PRIVATE pcod_common)
   add_test(NAME pcod_common_test_readme_example COMMAND pcod_common_test_readme_example)
@@ -76,6 +111,5 @@ install(TARGETS pcod_common
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
-
 
 install(DIRECTORY include/pcod_common DESTINATION include)

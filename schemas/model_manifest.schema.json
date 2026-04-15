@@ -1,111 +1,279 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "pcod-common/model_manifest.schema.json",
-  "title": "PCOD Model Manifest",
+  "title": "PCOD Model Bundle Manifest",
   "type": "object",
-  "required": [
-    "schema_version",
-    "model_name",
-    "precision",
-    "device",
-    "preprocessing",
-    "postprocessing",
-    "model"
-  ],
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact", "frozen_contract", "runtime_defaults"],
   "properties": {
-    "schema_version": { "type": "string" },
-    "model_name": { "type": "string" },
-    "precision": { "type": "string" },
-    "device": { "type": "string" },
-    "preprocessing": {
+    "schema_version": {
+      "type": "string",
+      "const": "2.0"
+    },
+    "artifact": {
       "type": "object",
-      "required": ["max_num_points", "num_point_features", "point_cloud_range", "voxel_size", "point_features_normalization"],
+      "additionalProperties": false,
+      "required": [
+        "bundle_name",
+        "export_format",
+        "backend",
+        "precision",
+        "device",
+        "files",
+        "triton",
+        "inputs",
+        "outputs"
+      ],
       "properties": {
-        "max_num_points": { "type": "integer", "minimum": 1 },
-        "num_point_features": { "type": "integer", "minimum": 1 },
-        "point_cloud_range": {
+        "bundle_name": { "type": "string" },
+        "export_format": { "type": "string" },
+        "backend": { "type": "string" },
+        "precision": { "type": "string" },
+        "device": { "type": "string" },
+        "head_name": { "type": "string" },
+        "export_timestamp_utc": { "type": "string" },
+        "files": {
           "type": "object",
-          "required": ["x", "y", "z"],
+          "additionalProperties": false,
+          "required": ["checkpoint", "resolved_training_config"],
           "properties": {
-            "x": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
-            "y": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
-            "z": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }
+            "model": { "type": "string" },
+            "checkpoint": { "type": "string" },
+            "resolved_training_config": { "type": "string" },
+            "triton_repository": { "type": "string" },
+            "triton_config": { "type": "string" },
+            "triton_model": { "type": "string" }
           }
         },
-        "voxel_size": {
+        "triton": {
           "type": "object",
-          "required": ["x", "y"],
+          "additionalProperties": false,
+          "required": ["enabled"],
           "properties": {
-            "x": { "type": "number" },
-            "y": { "type": "number" },
-            "z": { "type": "number" }
+            "enabled": { "type": "boolean" },
+            "model_name": { "type": "string" },
+            "model_version": { "type": ["string", "integer"] }
           }
         },
-        "point_features_normalization": {
+        "inputs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "dtype", "shape"],
+            "properties": {
+              "name": { "type": "string" },
+              "dtype": { "type": "string" },
+              "shape": {
+                "type": "array",
+                "items": { "type": ["string", "integer"] }
+              },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "dtype", "shape"],
+            "properties": {
+              "name": { "type": "string" },
+              "dtype": { "type": "string" },
+              "shape": {
+                "type": "array",
+                "items": { "type": ["string", "integer"] }
+              },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "size_priors": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": { "type": "number" },
+            "minItems": 3,
+            "maxItems": 3
+          }
+        },
+        "size_priors_source": { "type": "string" }
+      }
+    },
+    "frozen_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["preprocessing", "postprocessing", "model"],
+      "properties": {
+        "preprocessing": {
           "type": "object",
-          "required": ["type", "epsilon"],
+          "additionalProperties": false,
+          "required": [
+            "max_num_points",
+            "num_point_features",
+            "point_cloud_range",
+            "voxel_size",
+            "point_feature_normalization"
+          ],
           "properties": {
-            "type": { "type": "string", "enum": ["none", "intensity_threshold", "min_max", "z_score"] },
-            "intensity_threshold": { "type": "number" },
-            "min_intensity": { "type": "number" },
-            "max_intensity": { "type": "number" },
-            "epsilon": { "type": "number", "minimum": 0 }
+            "max_num_points": { "type": "integer", "minimum": 1 },
+            "num_point_features": { "type": "integer", "minimum": 1 },
+            "point_cloud_range": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["x", "y", "z"],
+              "properties": {
+                "x": { "$ref": "#/definitions/range2" },
+                "y": { "$ref": "#/definitions/range2" },
+                "z": { "$ref": "#/definitions/range2" }
+              }
+            },
+            "voxel_size": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["x", "y", "z"],
+              "properties": {
+                "x": { "type": "number" },
+                "y": { "type": "number" },
+                "z": { "type": "number" }
+              }
+            },
+            "point_feature_normalization": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "epsilon"],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["none", "value_threshold", "min_max", "z_score"]
+                },
+                "min_value": { "type": "number" },
+                "max_value": { "type": "number" },
+                "epsilon": { "type": "number", "exclusiveMinimum": 0 }
+              }
+            }
+          }
+        },
+        "postprocessing": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["grid_size", "num_classes", "class_names"],
+          "properties": {
+            "grid_size": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["x", "y"],
+              "properties": {
+                "x": { "type": "integer", "minimum": 1 },
+                "y": { "type": "integer", "minimum": 1 }
+              }
+            },
+            "num_classes": { "type": "integer", "minimum": 1 },
+            "class_names": {
+              "type": "array",
+              "items": { "type": "string" },
+              "minItems": 1
+            }
+          }
+        },
+        "model": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "stride",
+            "up_stride",
+            "first_up_stride",
+            "pillar_map_size",
+            "pillar_map_range"
+          ],
+          "properties": {
+            "stride": {
+              "type": "array",
+              "items": { "type": "integer", "minimum": 1 },
+              "minItems": 1
+            },
+            "up_stride": {
+              "type": "array",
+              "items": { "type": "integer", "minimum": 1 },
+              "minItems": 1
+            },
+            "first_up_stride": { "type": "integer", "minimum": 1 },
+            "pillar_map_size": {
+              "type": "array",
+              "items": { "type": "integer", "minimum": 1 },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "pillar_map_range": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/range2" },
+              "minItems": 3,
+              "maxItems": 3
+            }
           }
         }
       }
     },
-    "postprocessing": {
+    "runtime_defaults": {
       "type": "object",
-      "required": ["grid_size", "num_classes", "class_names", "nms_iou_threshold", "score_threshold", "max_detections"],
+      "additionalProperties": false,
+      "required": ["preprocessing", "postprocessing"],
       "properties": {
-        "grid_size": {
+        "preprocessing": {
           "type": "object",
-          "required": ["x", "y"],
+          "additionalProperties": false,
+          "required": ["point_feature"],
           "properties": {
-            "x": { "type": "integer", "minimum": 1 },
-            "y": { "type": "integer", "minimum": 1 }
+            "point_feature": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "value_threshold": { "type": "number", "exclusiveMinimum": 0 }
+              }
+            }
           }
         },
-        "num_classes": { "type": "integer", "minimum": 1 },
-        "class_names": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
-        "nms_iou_threshold": { "type": "number", "minimum": 0, "maximum": 1 },
-        "score_threshold": { "type": ["number", "array"] },
-        "max_detections": { "type": "integer", "minimum": 1 }
+        "postprocessing": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["class_score_threshold", "nms"],
+          "properties": {
+            "class_score_threshold": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "nms": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["score_threshold", "iou_threshold", "max_num_objects"],
+              "properties": {
+                "score_threshold": {
+                  "type": ["number", "array"]
+                },
+                "iou_threshold": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "max_num_objects": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        }
       }
-    },
-    "model": {
-      "type": "object",
-      "required": [
-        "stride",
-        "up_stride",
-        "first_up_stride",
-        "pillar_map_size",
-        "pillar_map_range",
-        "mask_is_bool",
-        "zero_intensity"
-      ],
-      "properties": {
-        "stride": { "type": "array", "items": { "type": "integer" }, "minItems": 1 },
-        "up_stride": { "type": "array", "items": { "type": "integer" }, "minItems": 1 },
-        "first_up_stride": { "type": "integer", "minimum": 1 },
-        "pillar_map_size": { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2 },
-        "pillar_map_range": {
-          "type": "array",
-          "items": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
-          "minItems": 3,
-          "maxItems": 3
-        },
-        "mask_is_bool": { "type": "boolean" },
-        "zero_intensity": { "type": "boolean" }
-      }
-    },
-    "triton": {
-      "type": "object",
-      "properties": {
-        "model_name": { "type": "string" },
-        "model_version": { "type": "string" },
-        "precision": { "type": "string" }
-      }
+    }
+  },
+  "definitions": {
+    "range2": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 2,
+      "maxItems": 2
     }
   }
 }

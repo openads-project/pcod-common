@@ -15,24 +15,20 @@ namespace {
 constexpr int kThreadsPerBlock = 256;
 constexpr float kRadiusEpsilon = 1e-6f;
 
-__device__ float NormalizeIntensityDevice(float intensity, const PillarPreprocessCudaConfig& config) {
-  if (config.zero_intensity) {
-    return 0.0f;
-  }
-
+__device__ float NormalizePointFeatureDevice(float intensity, const PillarPreprocessCudaConfig& config) {
   switch (config.normalization_type) {
     case PointFeatureNormalizationType::kNone:
       return intensity;
-    case PointFeatureNormalizationType::kIntensityThreshold: {
-      if (config.intensity_threshold <= 0.0f) {
+    case PointFeatureNormalizationType::kValueThreshold: {
+      if (config.value_threshold <= 0.0f) {
         return intensity;
       }
-      const float clipped = fminf(fmaxf(intensity, 0.0f), config.intensity_threshold);
-      return clipped / fmaxf(config.intensity_threshold, config.epsilon);
+      const float clipped = fminf(fmaxf(intensity, 0.0f), config.value_threshold);
+      return clipped / fmaxf(config.value_threshold, config.epsilon);
     }
     case PointFeatureNormalizationType::kMinMax: {
-      const float denom = fmaxf(config.max_intensity - config.min_intensity, config.epsilon);
-      const float scaled = (intensity - config.min_intensity) / denom;
+      const float denom = fmaxf(config.max_value - config.min_value, config.epsilon);
+      const float scaled = (intensity - config.min_value) / denom;
       return fminf(fmaxf(scaled, 0.0f), 1.0f);
     }
     case PointFeatureNormalizationType::kZScore:
@@ -154,7 +150,7 @@ __global__ void PreprocessPass2Kernel(const PillarPreprocessPoint* points, std::
   feature_row[8] = fmaxf(mean_x2 - mean_x * mean_x, 0.0f);
   feature_row[9] = fmaxf(mean_y2 - mean_y * mean_y, 0.0f);
   feature_row[10] = fmaxf(mean_z2 - mean_z * mean_z, 0.0f);
-  feature_row[11] = NormalizeIntensityDevice(point.intensity, config);
+  feature_row[11] = NormalizePointFeatureDevice(point.intensity, config);
   feature_row[12] = point.x - mean_x;
   feature_row[13] = point.y - mean_y;
   feature_row[14] = point.z - mean_z;
