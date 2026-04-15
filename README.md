@@ -29,6 +29,7 @@ This repository provides:
 ## Build (C++)
 
 ```sh
+apt-get update && apt-get install -y cmake g++ pkg-config libyaml-cpp-dev
 cmake -S . -B build -DPCOD_COMMON_BUILD_TESTS=ON
 cmake --build build
 ctest --test-dir build

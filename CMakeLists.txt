@@ -3,7 +3,17 @@ project(pcod_common LANGUAGES CXX)
 
 option(PCOD_COMMON_BUILD_TESTS "Build pcod-common tests" ON)
 
-find_package(yaml-cpp REQUIRED)
+find_package(yaml-cpp QUIET CONFIG)
+if(TARGET yaml-cpp::yaml-cpp)
+  set(PCOD_COMMON_YAML_CPP_TARGET yaml-cpp::yaml-cpp)
+elseif(TARGET yaml-cpp)
+  set(PCOD_COMMON_YAML_CPP_TARGET yaml-cpp)
+else()
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(YAML_CPP REQUIRED IMPORTED_TARGET yaml-cpp)
+  set(PCOD_COMMON_YAML_CPP_TARGET PkgConfig::YAML_CPP)
+endif()
+
 option(PCOD_COMMON_ENABLE_CUDA "Build optional CUDA components for pcod-common" OFF)
 
 add_library(pcod_common STATIC
@@ -26,7 +36,7 @@ target_include_directories(pcod_common
     $<INSTALL_INTERFACE:include>
 )
 
-target_link_libraries(pcod_common PUBLIC yaml-cpp)
+target_link_libraries(pcod_common PUBLIC ${PCOD_COMMON_YAML_CPP_TARGET})
 
 if(PCOD_COMMON_ENABLE_CUDA)
   include(CheckLanguage)
