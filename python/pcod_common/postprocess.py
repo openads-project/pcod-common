@@ -173,6 +173,7 @@ def apply_nms(
     *,
     per_class_topk: bool = False,
     use_rotated: bool = True,
+    pre_nms_topk: int | None = None,
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     if boxes.numel() == 0:
         return boxes, scores, labels
@@ -214,12 +215,24 @@ def apply_nms(
 
         class_boxes = class_boxes[score_mask]
         class_scores = class_scores[score_mask]
+        original_indices = class_mask.nonzero(as_tuple=False).squeeze(1)
+        original_indices = original_indices[score_mask]
+
+        if pre_nms_topk is not None and class_scores.numel() > pre_nms_topk:
+            top_scores, top_indices = torch.topk(
+                class_scores,
+                k=int(pre_nms_topk),
+                largest=True,
+                sorted=False,
+            )
+            class_boxes = class_boxes[top_indices]
+            class_scores = top_scores
+            original_indices = original_indices[top_indices]
+
         class_keep = _nms_rotated_safe(class_boxes, class_scores)
         if class_keep.numel() == 0:
             continue
 
-        original_indices = class_mask.nonzero(as_tuple=False).squeeze(1)
-        original_indices = original_indices[score_mask]
         keep_indices.append(original_indices[class_keep])
 
     if not keep_indices:
