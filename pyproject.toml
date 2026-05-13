@@ -23,6 +23,7 @@ dependencies = [
   "torch>=2.0",
   "torchvision>=0.15",
   "numpy>=1.25",
+  "PyYAML>=6.0",
 ]
 
 [project.optional-dependencies]
