@@ -1,0 +1,5 @@
+include LICENSE
+include README.md
+include VERSION
+recursive-include csrc *.cpp *.cu
+recursive-include schemas *.json

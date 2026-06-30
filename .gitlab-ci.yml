@@ -1,6 +1,7 @@
 stages:
   - checks
   - build
+  - package
   - test
 
 license:headers:
@@ -55,6 +56,27 @@ build:cuda-fallback:
     - apt-get install -y cmake g++ pkg-config libyaml-cpp-dev
     - cmake -S . -B build-cuda-fallback -DPCOD_COMMON_BUILD_TESTS=OFF -DPCOD_COMMON_ENABLE_CUDA=ON
     - cmake --build build-cuda-fallback
+
+package:python:
+  stage: package
+  image: python:3.12-bookworm
+  before_script:
+    - python3 -m pip install --upgrade pip
+    - python3 -m pip install build twine
+  script:
+    - python3 -m build
+    - python3 -m twine check dist/*
+    - python3 -m venv /tmp/pcod-wheel-venv
+    - /tmp/pcod-wheel-venv/bin/pip install PyYAML
+    - /tmp/pcod-wheel-venv/bin/pip install --no-deps dist/*.whl
+    - (cd /tmp && /tmp/pcod-wheel-venv/bin/python "$CI_PROJECT_DIR/scripts/verify_installed_package.py" "$(cat "$CI_PROJECT_DIR/VERSION")")
+    - python3 -m venv /tmp/pcod-sdist-venv
+    - /tmp/pcod-sdist-venv/bin/pip install PyYAML
+    - /tmp/pcod-sdist-venv/bin/pip install --no-deps dist/*.tar.gz
+    - (cd /tmp && /tmp/pcod-sdist-venv/bin/python "$CI_PROJECT_DIR/scripts/verify_installed_package.py" "$(cat "$CI_PROJECT_DIR/VERSION")")
+  artifacts:
+    paths:
+      - dist/
 
 test:sanitizers:
   stage: test

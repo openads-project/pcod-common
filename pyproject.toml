@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +8,8 @@ version = "0.1.0"
 description = "Shared preprocessing/postprocessing utilities for point cloud object detection."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [
   { name = "Bastian Lampe", email = "bastian.lampe@rwth-aachen.de" }
 ]
@@ -19,10 +20,10 @@ classifiers = [
   "Development Status :: 3 - Alpha",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
-  "License :: OSI Approved :: Apache Software License",
   "Operating System :: POSIX :: Linux",
 ]
 dependencies = [
+  "ninja>=1.11",
   "torch>=2.0",
   "torchvision>=0.15",
   "numpy>=1.25",
@@ -44,3 +45,4 @@ package-dir = {"" = "python"}
 
 [tool.setuptools.packages.find]
 where = ["python"]
+exclude = ["tests*"]

@@ -47,6 +47,20 @@ pytest
 `python/tests/test_postprocess.py` requires `torch` and `torchvision`.
 If those packages are not installed, those postprocess tests are skipped and manifest tests still run.
 
+## Build Python Distributions
+
+Build and validate the wheel and source distribution from the repository root:
+
+```sh
+python3 -m pip install build twine
+python3 -m build
+python3 -m twine check dist/*
+```
+
+Published distributions include the model-manifest schema and the C++/CUDA sources required to build the optional PyTorch
+extensions at runtime. Distribution validation does not require a GPU. Compiling the extensions requires Ninja and a CUDA
+toolkit compatible with the installed PyTorch build; executing them requires a CUDA-capable GPU.
+
 ## Devcontainer
 
 A basic devcontainer definition is provided in `.devcontainer/`. In a container, install Python deps (including torch) and run:
