@@ -35,6 +35,24 @@ cmake --build build
 ctest --test-dir build
 ```
 
+The existing subdirectory workflow remains supported:
+
+```cmake
+add_subdirectory(pcod-common)
+target_link_libraries(my_target PRIVATE pcod_common)
+```
+
+For an installed package, consumers can use the namespaced CMake target:
+
+```sh
+cmake --install build --prefix /path/to/prefix
+```
+
+```cmake
+find_package(pcod_common CONFIG REQUIRED)
+target_link_libraries(my_target PRIVATE pcod_common::pcod_common)
+```
+
 CUDA kernels are optional and are built at runtime via the PyTorch extension loaders in `python/pcod_common/torch_extensions/`.
 Some C++ tests validate Python/C++ contract parity and require `python3` to be available on `PATH`.
 

@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
-project(pcod_common LANGUAGES CXX)
+
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" PCOD_COMMON_VERSION LIMIT_COUNT 1)
+project(pcod_common VERSION "${PCOD_COMMON_VERSION}" LANGUAGES CXX)
+
+include(CMakePackageConfigHelpers)
+include(GNUInstallDirs)
 
 option(PCOD_COMMON_BUILD_TESTS "Build pcod-common tests" ON)
 
@@ -15,6 +20,7 @@ else()
 endif()
 
 option(PCOD_COMMON_ENABLE_CUDA "Build optional CUDA components for pcod-common" OFF)
+set(PCOD_COMMON_CONFIG_WITH_CUDA OFF)
 
 add_library(pcod_common STATIC
   src/bounding_box.cpp
@@ -24,6 +30,7 @@ add_library(pcod_common STATIC
   src/point_preprocess.cpp
   src/model_manifest.cpp
 )
+add_library(pcod_common::pcod_common ALIAS pcod_common)
 
 set_target_properties(pcod_common PROPERTIES
   CXX_STANDARD 17
@@ -44,6 +51,7 @@ if(PCOD_COMMON_ENABLE_CUDA)
   if(CMAKE_CUDA_COMPILER)
     enable_language(CUDA)
     find_package(CUDAToolkit REQUIRED)
+    set(PCOD_COMMON_CONFIG_WITH_CUDA ON)
     target_sources(pcod_common PRIVATE src/pillar_preprocess_cuda_runtime.cu)
     target_link_libraries(pcod_common PRIVATE CUDA::cudart)
     set_source_files_properties(src/pillar_preprocess_cuda_runtime.cu PROPERTIES LANGUAGE CUDA)
@@ -106,10 +114,36 @@ if(PCOD_COMMON_BUILD_TESTS)
   add_test(NAME pcod_common_test_readme_example COMMAND pcod_common_test_readme_example)
 endif()
 
-install(TARGETS pcod_common
-  ARCHIVE DESTINATION lib
-  LIBRARY DESTINATION lib
-  RUNTIME DESTINATION bin
+set(PCOD_COMMON_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/pcod_common"
+    CACHE STRING "Install directory for pcod-common CMake package files")
+set(PCOD_COMMON_CONFIG_YAML_CPP_TARGET "${PCOD_COMMON_YAML_CPP_TARGET}")
+
+configure_package_config_file(
+  cmake/pcod_commonConfig.cmake.in
+  "${CMAKE_CURRENT_BINARY_DIR}/pcod_commonConfig.cmake"
+  INSTALL_DESTINATION "${PCOD_COMMON_INSTALL_CMAKEDIR}"
+)
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/pcod_commonConfigVersion.cmake"
+  VERSION "${PROJECT_VERSION}"
+  COMPATIBILITY SameMajorVersion
 )
 
-install(DIRECTORY include/pcod_common DESTINATION include)
+install(TARGETS pcod_common
+  EXPORT pcod_commonTargets
+  ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+  LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+  RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+  INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+)
+install(DIRECTORY include/pcod_common DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+install(EXPORT pcod_commonTargets
+  FILE pcod_commonTargets.cmake
+  NAMESPACE pcod_common::
+  DESTINATION "${PCOD_COMMON_INSTALL_CMAKEDIR}"
+)
+install(FILES
+  "${CMAKE_CURRENT_BINARY_DIR}/pcod_commonConfig.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/pcod_commonConfigVersion.cmake"
+  DESTINATION "${PCOD_COMMON_INSTALL_CMAKEDIR}"
+)

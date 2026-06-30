@@ -82,6 +82,13 @@ jobs:
       - name: Run C++ tests
         if: matrix.run_tests
         run: ctest --test-dir build --output-on-failure
+      - name: Test installed CMake package
+        if: matrix.name == 'GCC'
+        run: |
+          cmake --install build --prefix build/install
+          cmake -S tests/cmake_package -B build-package-test -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/build/install"
+          cmake --build build-package-test
+          ctest --test-dir build-package-test --output-on-failure
 
   python-tests:
     name: Python 3.12

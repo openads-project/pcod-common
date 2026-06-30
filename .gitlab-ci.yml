@@ -37,6 +37,10 @@ build:gcc:
     - CC=gcc CXX=g++ cmake -S . -B build-gcc -DPCOD_COMMON_BUILD_TESTS=ON
     - cmake --build build-gcc
     - ctest --test-dir build-gcc --output-on-failure
+    - cmake --install build-gcc --prefix build-gcc/install
+    - cmake -S tests/cmake_package -B build-package-test -DCMAKE_PREFIX_PATH="$CI_PROJECT_DIR/build-gcc/install"
+    - cmake --build build-package-test
+    - ctest --test-dir build-package-test --output-on-failure
 
 build:clang:
   stage: build
