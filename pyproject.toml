@@ -30,6 +30,11 @@ dependencies = [
   "PyYAML>=6.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/openads-project/pcod-common"
+Repository = "https://github.com/openads-project/pcod-common"
+Issues = "https://github.com/openads-project/pcod-common/issues"
+
 [project.optional-dependencies]
 dev = [
   "black==26.3.1",
