@@ -32,7 +32,7 @@ build:gcc:
   image: ubuntu:22.04
   script:
     - apt-get update
-    - apt-get install -y cmake g++ pkg-config libyaml-cpp-dev python3
+    - apt-get install -y cmake g++ pkg-config libyaml-cpp-dev python3 python3-yaml
     - CC=gcc CXX=g++ cmake -S . -B build-gcc -DPCOD_COMMON_BUILD_TESTS=ON
     - cmake --build build-gcc
     - ctest --test-dir build-gcc --output-on-failure
@@ -42,7 +42,7 @@ build:clang:
   image: ubuntu:22.04
   script:
     - apt-get update
-    - apt-get install -y cmake clang pkg-config libyaml-cpp-dev python3
+    - apt-get install -y cmake clang pkg-config libyaml-cpp-dev python3 python3-yaml
     - CC=clang CXX=clang++ cmake -S . -B build-clang -DPCOD_COMMON_BUILD_TESTS=ON
     - cmake --build build-clang
     - ctest --test-dir build-clang --output-on-failure
@@ -63,7 +63,7 @@ test:sanitizers:
     ASAN_OPTIONS: detect_leaks=0
   script:
     - apt-get update
-    - apt-get install -y cmake g++ pkg-config libyaml-cpp-dev python3
+    - apt-get install -y cmake g++ pkg-config libyaml-cpp-dev python3 python3-yaml
     - cmake -S . -B build-sanitizers -DPCOD_COMMON_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-fsanitize=address,undefined -DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address,undefined
     - cmake --build build-sanitizers
     - ctest --test-dir build-sanitizers --output-on-failure
