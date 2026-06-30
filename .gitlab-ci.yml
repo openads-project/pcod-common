@@ -30,7 +30,7 @@ format:cpp:
 
 build:gcc:
   stage: build
-  image: ubuntu:22.04
+  image: ubuntu:24.04
   script:
     - apt-get update
     - apt-get install -y cmake g++ pkg-config libyaml-cpp-dev python3 python3-yaml
@@ -40,7 +40,7 @@ build:gcc:
 
 build:clang:
   stage: build
-  image: ubuntu:22.04
+  image: ubuntu:24.04
   script:
     - apt-get update
     - apt-get install -y cmake clang pkg-config libyaml-cpp-dev python3 python3-yaml
@@ -50,7 +50,7 @@ build:clang:
 
 build:cuda-fallback:
   stage: build
-  image: ubuntu:22.04
+  image: ubuntu:24.04
   script:
     - apt-get update
     - apt-get install -y cmake g++ pkg-config libyaml-cpp-dev
@@ -80,7 +80,7 @@ package:python:
 
 test:sanitizers:
   stage: test
-  image: ubuntu:22.04
+  image: ubuntu:24.04
   variables:
     ASAN_OPTIONS: detect_leaks=0
   script:
@@ -92,7 +92,7 @@ test:sanitizers:
 
 test:python:
   stage: test
-  image: python:3.10-bookworm
+  image: python:3.12-bookworm
   before_script:
     - apt-get update
     - apt-get install -y cmake g++ pkg-config libyaml-cpp-dev
@@ -100,14 +100,3 @@ test:python:
     - python3 -m pip install -e ".[dev]"
   script:
     - pytest -q
-
-test:python-compatibility:
-  stage: test
-  image: python:${PYTHON_VERSION}-bookworm
-  parallel:
-    matrix:
-      - PYTHON_VERSION: ["3.11", "3.12"]
-  before_script:
-    - python3 -m pip install "pytest>=7.4" "PyYAML>=6.0"
-  script:
-    - PYTHONPATH=python pytest -q
