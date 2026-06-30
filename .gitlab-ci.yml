@@ -9,27 +9,83 @@ license:headers:
   script:
     - python3 scripts/check_license_headers.py
 
-build:cmake:
+lint:python:
+  stage: checks
+  image: python:3.12-bookworm
+  before_script:
+    - python3 -m pip install "black==26.3.1" "flake8==7.3.0" flake8-docstrings flake8-import-order flake8-quotes
+  script:
+    - black --check --line-length=130 python scripts
+    - flake8 --config=.flake8 python scripts
+
+format:cpp:
+  stage: checks
+  image: ubuntu:24.04
+  before_script:
+    - apt-get update
+    - apt-get install -y clang-format-18
+  script:
+    - clang-format-18 --dry-run --Werror $(find csrc include src tests -type f \( -name '*.cpp' -o -name '*.cu' -o -name '*.hpp' \))
+
+build:gcc:
+  stage: build
+  image: ubuntu:22.04
+  script:
+    - apt-get update
+    - apt-get install -y cmake g++ pkg-config libyaml-cpp-dev python3
+    - CC=gcc CXX=g++ cmake -S . -B build-gcc -DPCOD_COMMON_BUILD_TESTS=ON
+    - cmake --build build-gcc
+    - ctest --test-dir build-gcc --output-on-failure
+
+build:clang:
+  stage: build
+  image: ubuntu:22.04
+  script:
+    - apt-get update
+    - apt-get install -y cmake clang pkg-config libyaml-cpp-dev python3
+    - CC=clang CXX=clang++ cmake -S . -B build-clang -DPCOD_COMMON_BUILD_TESTS=ON
+    - cmake --build build-clang
+    - ctest --test-dir build-clang --output-on-failure
+
+build:cuda-fallback:
   stage: build
   image: ubuntu:22.04
   script:
     - apt-get update
     - apt-get install -y cmake g++ pkg-config libyaml-cpp-dev
-    - cmake -S . -B build -DPCOD_COMMON_BUILD_TESTS=ON
-    - cmake --build build
-  artifacts:
-    paths:
-      - build/
+    - cmake -S . -B build-cuda-fallback -DPCOD_COMMON_BUILD_TESTS=OFF -DPCOD_COMMON_ENABLE_CUDA=ON
+    - cmake --build build-cuda-fallback
 
-unit:tests:
+test:sanitizers:
   stage: test
   image: ubuntu:22.04
+  variables:
+    ASAN_OPTIONS: detect_leaks=0
   script:
     - apt-get update
-    - apt-get install -y cmake g++ pkg-config python3 python3-pip libyaml-cpp-dev
-    - cmake -S . -B build -DPCOD_COMMON_BUILD_TESTS=ON
-    - cmake --build build
-    - python3 -m pip install -U pip
+    - apt-get install -y cmake g++ pkg-config libyaml-cpp-dev python3
+    - cmake -S . -B build-sanitizers -DPCOD_COMMON_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-fsanitize=address,undefined -DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address,undefined
+    - cmake --build build-sanitizers
+    - ctest --test-dir build-sanitizers --output-on-failure
+
+test:python:
+  stage: test
+  image: python:3.10-bookworm
+  before_script:
+    - apt-get update
+    - apt-get install -y cmake g++ pkg-config libyaml-cpp-dev
+    - python3 -m pip install --upgrade pip
     - python3 -m pip install -e ".[dev]"
-    - ctest --test-dir build --output-on-failure
+  script:
     - pytest -q
+
+test:python-compatibility:
+  stage: test
+  image: python:${PYTHON_VERSION}-bookworm
+  parallel:
+    matrix:
+      - PYTHON_VERSION: ["3.11", "3.12"]
+  before_script:
+    - python3 -m pip install "pytest>=7.4" "PyYAML>=6.0"
+  script:
+    - PYTHONPATH=python pytest -q

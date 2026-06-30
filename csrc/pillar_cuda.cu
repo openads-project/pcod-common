@@ -11,25 +11,24 @@
 
 namespace {
 
-__global__ void pillar_stats_kernel(
-    const bool* points_mask,
-    const float* points_xyz,
-    int64_t* pillar_ids_out,
-    int32_t* point_count,
-    float* xyz_sum,
-    const int64_t batch_size,
-    const int64_t num_points,
-    const int64_t num_pillars,
-    const float x_min,
-    const float y_min,
-    const float z_min,
-    const float x_max,
-    const float y_max,
-    const float z_max,
-    const float voxel_x,
-    const float voxel_y,
-    const int64_t grid_x,
-    const int64_t grid_y) {
+__global__ void pillar_stats_kernel(const bool* points_mask,
+                                    const float* points_xyz,
+                                    int64_t* pillar_ids_out,
+                                    int32_t* point_count,
+                                    float* xyz_sum,
+                                    const int64_t batch_size,
+                                    const int64_t num_points,
+                                    const int64_t num_pillars,
+                                    const float x_min,
+                                    const float y_min,
+                                    const float z_min,
+                                    const float x_max,
+                                    const float y_max,
+                                    const float z_max,
+                                    const float voxel_x,
+                                    const float voxel_y,
+                                    const int64_t grid_x,
+                                    const int64_t grid_y) {
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
   const int total = batch_size * num_points;
   if (idx >= total) {
@@ -68,26 +67,25 @@ __global__ void pillar_stats_kernel(
   atomicAdd(xyz_sum + sum_offset + 2, z);
 }
 
-__global__ void pillar_preprocess_pass1_kernel(
-    const bool* points_mask,
-    const float* points_xyz,
-    int64_t* pillar_ids_out,
-    int32_t* point_count,
-    float* xyz_sum,
-    float* xyz_sq_sum,
-    const int64_t batch_size,
-    const int64_t num_points,
-    const int64_t num_pillars,
-    const float x_min,
-    const float y_min,
-    const float z_min,
-    const float x_max,
-    const float y_max,
-    const float z_max,
-    const float voxel_x,
-    const float voxel_y,
-    const int64_t grid_x,
-    const int64_t grid_y) {
+__global__ void pillar_preprocess_pass1_kernel(const bool* points_mask,
+                                               const float* points_xyz,
+                                               int64_t* pillar_ids_out,
+                                               int32_t* point_count,
+                                               float* xyz_sum,
+                                               float* xyz_sq_sum,
+                                               const int64_t batch_size,
+                                               const int64_t num_points,
+                                               const int64_t num_pillars,
+                                               const float x_min,
+                                               const float y_min,
+                                               const float z_min,
+                                               const float x_max,
+                                               const float y_max,
+                                               const float z_max,
+                                               const float voxel_x,
+                                               const float voxel_y,
+                                               const int64_t grid_x,
+                                               const int64_t grid_y) {
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
   const int total = batch_size * num_points;
   if (idx >= total) {
@@ -129,27 +127,26 @@ __global__ void pillar_preprocess_pass1_kernel(
   atomicAdd(xyz_sq_sum + sum_offset + 2, z * z);
 }
 
-__global__ void pillar_preprocess_pass2_kernel(
-    const float* points_xyz,
-    const float* points_feature,
-    const int64_t* pillar_ids,
-    const int32_t* point_count,
-    const float* xyz_sum,
-    const float* xyz_sq_sum,
-    float* point_features_out,
-    const int64_t batch_size,
-    const int64_t num_points,
-    const int64_t num_pillars,
-    const float x_min,
-    const float y_min,
-    const float z_min,
-    const float z_max,
-    const float voxel_x,
-    const float voxel_y,
-    const int64_t grid_x,
-    const int64_t grid_y,
-    const int64_t extra_feature_dim,
-    const int64_t feature_dim) {
+__global__ void pillar_preprocess_pass2_kernel(const float* points_xyz,
+                                               const float* points_feature,
+                                               const int64_t* pillar_ids,
+                                               const int32_t* point_count,
+                                               const float* xyz_sum,
+                                               const float* xyz_sq_sum,
+                                               float* point_features_out,
+                                               const int64_t batch_size,
+                                               const int64_t num_points,
+                                               const int64_t num_pillars,
+                                               const float x_min,
+                                               const float y_min,
+                                               const float z_min,
+                                               const float z_max,
+                                               const float voxel_x,
+                                               const float voxel_y,
+                                               const int64_t grid_x,
+                                               const int64_t grid_y,
+                                               const int64_t extra_feature_dim,
+                                               const int64_t feature_dim) {
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
   const int total = batch_size * num_points;
   if (idx >= total) {
@@ -242,19 +239,18 @@ __global__ void pillar_preprocess_pass2_kernel(
 
 }  // namespace
 
-std::vector<torch::Tensor> pillar_stats_cuda(
-    torch::Tensor points_mask,
-    torch::Tensor points_xyz,
-    double x_min,
-    double y_min,
-    double z_min,
-    double x_max,
-    double y_max,
-    double z_max,
-    double voxel_x,
-    double voxel_y,
-    int64_t grid_x,
-    int64_t grid_y) {
+std::vector<torch::Tensor> pillar_stats_cuda(torch::Tensor points_mask,
+                                             torch::Tensor points_xyz,
+                                             double x_min,
+                                             double y_min,
+                                             double z_min,
+                                             double x_max,
+                                             double y_max,
+                                             double z_max,
+                                             double voxel_x,
+                                             double voxel_y,
+                                             int64_t grid_x,
+                                             int64_t grid_y) {
   TORCH_CHECK(points_mask.is_cuda(), "points_mask must be CUDA");
   TORCH_CHECK(points_xyz.is_cuda(), "points_xyz must be CUDA");
   TORCH_CHECK(points_mask.dim() == 2, "points_mask must be [B, P]");
@@ -275,43 +271,28 @@ std::vector<torch::Tensor> pillar_stats_cuda(
   const int blocks = (batch_size * num_points + threads - 1) / threads;
   auto stream = at::cuda::getCurrentCUDAStream();
   pillar_stats_kernel<<<blocks, threads, 0, stream>>>(
-      points_mask.data_ptr<bool>(),
-      points_xyz.data_ptr<float>(),
-      pillar_ids.data_ptr<int64_t>(),
-      point_count.data_ptr<int32_t>(),
-      xyz_sum.data_ptr<float>(),
-      batch_size,
-      num_points,
-      num_pillars,
-      static_cast<float>(x_min),
-      static_cast<float>(y_min),
-      static_cast<float>(z_min),
-      static_cast<float>(x_max),
-      static_cast<float>(y_max),
-      static_cast<float>(z_max),
-      static_cast<float>(voxel_x),
-      static_cast<float>(voxel_y),
-      grid_x,
-      grid_y);
+      points_mask.data_ptr<bool>(), points_xyz.data_ptr<float>(), pillar_ids.data_ptr<int64_t>(), point_count.data_ptr<int32_t>(),
+      xyz_sum.data_ptr<float>(), batch_size, num_points, num_pillars, static_cast<float>(x_min), static_cast<float>(y_min),
+      static_cast<float>(z_min), static_cast<float>(x_max), static_cast<float>(y_max), static_cast<float>(z_max),
+      static_cast<float>(voxel_x), static_cast<float>(voxel_y), grid_x, grid_y);
   C10_CUDA_KERNEL_LAUNCH_CHECK();
 
   return {pillar_ids, point_count, xyz_sum};
 }
 
-std::vector<torch::Tensor> pillar_preprocess_cuda(
-    torch::Tensor points_mask,
-    torch::Tensor points_xyz,
-    torch::Tensor points_feature,
-    double x_min,
-    double y_min,
-    double z_min,
-    double x_max,
-    double y_max,
-    double z_max,
-    double voxel_x,
-    double voxel_y,
-    int64_t grid_x,
-    int64_t grid_y) {
+std::vector<torch::Tensor> pillar_preprocess_cuda(torch::Tensor points_mask,
+                                                  torch::Tensor points_xyz,
+                                                  torch::Tensor points_feature,
+                                                  double x_min,
+                                                  double y_min,
+                                                  double z_min,
+                                                  double x_max,
+                                                  double y_max,
+                                                  double z_max,
+                                                  double voxel_x,
+                                                  double voxel_y,
+                                                  int64_t grid_x,
+                                                  int64_t grid_y) {
   TORCH_CHECK(points_mask.is_cuda(), "points_mask must be CUDA");
   TORCH_CHECK(points_xyz.is_cuda(), "points_xyz must be CUDA");
   TORCH_CHECK(points_feature.is_cuda(), "points_feature must be CUDA");
@@ -345,47 +326,17 @@ std::vector<torch::Tensor> pillar_preprocess_cuda(
   const int blocks = (batch_size * num_points + threads - 1) / threads;
   auto stream = at::cuda::getCurrentCUDAStream();
   pillar_preprocess_pass1_kernel<<<blocks, threads, 0, stream>>>(
-      points_mask.data_ptr<bool>(),
-      points_xyz.data_ptr<float>(),
-      pillar_ids.data_ptr<int64_t>(),
-      point_count.data_ptr<int32_t>(),
-      xyz_sum.data_ptr<float>(),
-      xyz_sq_sum.data_ptr<float>(),
-      batch_size,
-      num_points,
-      num_pillars,
-      static_cast<float>(x_min),
-      static_cast<float>(y_min),
-      static_cast<float>(z_min),
-      static_cast<float>(x_max),
-      static_cast<float>(y_max),
-      static_cast<float>(z_max),
-      static_cast<float>(voxel_x),
-      static_cast<float>(voxel_y),
-      grid_x,
-      grid_y);
+      points_mask.data_ptr<bool>(), points_xyz.data_ptr<float>(), pillar_ids.data_ptr<int64_t>(), point_count.data_ptr<int32_t>(),
+      xyz_sum.data_ptr<float>(), xyz_sq_sum.data_ptr<float>(), batch_size, num_points, num_pillars, static_cast<float>(x_min),
+      static_cast<float>(y_min), static_cast<float>(z_min), static_cast<float>(x_max), static_cast<float>(y_max),
+      static_cast<float>(z_max), static_cast<float>(voxel_x), static_cast<float>(voxel_y), grid_x, grid_y);
   C10_CUDA_KERNEL_LAUNCH_CHECK();
 
   pillar_preprocess_pass2_kernel<<<blocks, threads, 0, stream>>>(
-      points_xyz.data_ptr<float>(),
-      points_feature.data_ptr<float>(),
-      pillar_ids.data_ptr<int64_t>(),
-      point_count.data_ptr<int32_t>(),
-      xyz_sum.data_ptr<float>(),
-      xyz_sq_sum.data_ptr<float>(),
-      point_features.data_ptr<float>(),
-      batch_size,
-      num_points,
-      num_pillars,
-      static_cast<float>(x_min),
-      static_cast<float>(y_min),
-      static_cast<float>(z_min),
-      static_cast<float>(z_max),
-      static_cast<float>(voxel_x),
-      static_cast<float>(voxel_y),
-      grid_x,
-      grid_y,
-      extra_feature_dim,
+      points_xyz.data_ptr<float>(), points_feature.data_ptr<float>(), pillar_ids.data_ptr<int64_t>(),
+      point_count.data_ptr<int32_t>(), xyz_sum.data_ptr<float>(), xyz_sq_sum.data_ptr<float>(), point_features.data_ptr<float>(),
+      batch_size, num_points, num_pillars, static_cast<float>(x_min), static_cast<float>(y_min), static_cast<float>(z_min),
+      static_cast<float>(z_max), static_cast<float>(voxel_x), static_cast<float>(voxel_y), grid_x, grid_y, extra_feature_dim,
       feature_dim);
   C10_CUDA_KERNEL_LAUNCH_CHECK();
 

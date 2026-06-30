@@ -1,7 +1,9 @@
 # Copyright Institute for Automotive Engineering (ika), RWTH Aachen University
 # SPDX-License-Identifier: Apache-2.0
 
+"""Loaders for pcod-common PyTorch extensions."""
+
 from .pillar_cuda import load_pillar_cuda_extension
 from .rotated_nms import load_rotated_nms_extension
 
-__all__ = ['load_pillar_cuda_extension', 'load_rotated_nms_extension']
+__all__ = ["load_pillar_cuda_extension", "load_rotated_nms_extension"]

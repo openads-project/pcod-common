@@ -6,7 +6,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from pcod_common import manifest
 
 
@@ -93,13 +92,14 @@ def _minimal_payload() -> dict:
 
 
 def test_validate_manifest_accepts_minimal_payload():
+    """Accept a valid minimal manifest."""
     manifest.validate_manifest(_minimal_payload())
 
 
 def test_load_manifest_reads_yaml(tmp_path: Path):
+    """Load a manifest from YAML."""
     path = tmp_path / "model_manifest.yml"
-    path.write_text(
-        """
+    path.write_text("""
 schema_version: "2.0"
 artifact:
   bundle_name: pbod
@@ -158,13 +158,13 @@ runtime_defaults:
       score_threshold: [0.2]
       iou_threshold: 0.5
       max_num_objects: 16
-"""
-    )
+""")
     payload = manifest.load_manifest(path)
     assert payload["artifact"]["files"]["checkpoint"] == "checkpoints/best.pt"
 
 
 def test_validate_manifest_rejects_wrong_schema_version():
+    """Reject an unsupported schema version."""
     payload = _minimal_payload()
     payload["schema_version"] = "1.0"
     with pytest.raises(ValueError):
@@ -173,6 +173,7 @@ def test_validate_manifest_rejects_wrong_schema_version():
 
 @pytest.mark.parametrize("missing_key", ["artifact", "frozen_contract", "runtime_defaults"])
 def test_validate_manifest_rejects_missing_required_key(missing_key):
+    """Reject manifests missing required root keys."""
     payload = _minimal_payload()
     payload.pop(missing_key)
     with pytest.raises(ValueError, match="missing required key"):
@@ -180,6 +181,7 @@ def test_validate_manifest_rejects_missing_required_key(missing_key):
 
 
 def test_validate_manifest_requires_runtime_value_threshold_for_value_threshold_norm():
+    """Require a runtime threshold for threshold normalization."""
     payload = _minimal_payload()
     payload["runtime_defaults"]["preprocessing"]["point_feature"]["value_threshold"] = 0.0
     with pytest.raises(ValueError, match="value_threshold"):
@@ -187,6 +189,7 @@ def test_validate_manifest_requires_runtime_value_threshold_for_value_threshold_
 
 
 def test_validate_manifest_rejects_frozen_value_threshold_key():
+    """Reject a value threshold in the frozen contract."""
     payload = _minimal_payload()
     payload["frozen_contract"]["preprocessing"]["point_feature_normalization"]["value_threshold"] = 1.0
     with pytest.raises(ValueError, match="unsupported key"):
@@ -194,6 +197,7 @@ def test_validate_manifest_rejects_frozen_value_threshold_key():
 
 
 def test_validate_manifest_accepts_per_class_nms_thresholds():
+    """Accept per-class NMS thresholds."""
     payload = _minimal_payload()
     payload["frozen_contract"]["postprocessing"]["num_classes"] = 2
     payload["frozen_contract"]["postprocessing"]["class_names"] = ["car", "pedestrian"]
@@ -210,10 +214,12 @@ def test_validate_manifest_accepts_per_class_nms_thresholds():
     ],
 )
 def test_score_threshold_list(value, expected):
+    """Normalize supported score-threshold representations."""
     assert manifest.score_threshold_list(value) == expected
 
 
 def test_validate_manifest_rejects_unknown_artifact_key():
+    """Reject unknown artifact keys."""
     payload = _minimal_payload()
     payload["artifact"]["hardware_compatible"] = True
     with pytest.raises(ValueError, match="unsupported key"):
@@ -221,6 +227,7 @@ def test_validate_manifest_rejects_unknown_artifact_key():
 
 
 def test_validate_manifest_rejects_bundle_escaping_file_path():
+    """Reject file paths escaping the model bundle."""
     payload = _minimal_payload()
     payload["artifact"]["files"]["checkpoint"] = "../best.pt"
     with pytest.raises(ValueError, match="bundle root"):

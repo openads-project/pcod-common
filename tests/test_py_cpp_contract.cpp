@@ -140,19 +140,17 @@ int main() {
   const std::string py_prefix = "PYTHONPATH='" + python_dir + "' python3 -c \"";
 
   {
-    const auto result = RunCommandCapture(
-        py_prefix + "from pcod_common.manifest import SCHEMA_VERSION; print(SCHEMA_VERSION)\"");
+    const auto result = RunCommandCapture(py_prefix + "from pcod_common.manifest import SCHEMA_VERSION; print(SCHEMA_VERSION)\"");
     assert(result.exit_code == 0);
     assert(Trim(result.stdout_text) == pcod_common::kManifestSchemaVersion);
   }
 
   {
-    const auto result = RunCommandCapture(
-        py_prefix +
-        "from pcod_common.manifest import score_threshold_list as s; "
-        "print(','.join(str(v) for v in s(None))); "
-        "print(','.join(str(v) for v in s(0.25))); "
-        "print(','.join(str(v) for v in s([0.1, 0.2])))\"");
+    const auto result = RunCommandCapture(py_prefix +
+                                          "from pcod_common.manifest import score_threshold_list as s; "
+                                          "print(','.join(str(v) for v in s(None))); "
+                                          "print(','.join(str(v) for v in s(0.25))); "
+                                          "print(','.join(str(v) for v in s([0.1, 0.2])))\"");
     assert(result.exit_code == 0);
     const auto lines = SplitLines(result.stdout_text);
     assert(lines.size() == 3);
@@ -179,8 +177,7 @@ int main() {
   }
 
   {
-    const auto torch_check = RunCommandCapture(
-        py_prefix + "import torch, torchvision; print('ok')\"");
+    const auto torch_check = RunCommandCapture(py_prefix + "import torch, torchvision; print('ok')\"");
     if (torch_check.exit_code == 0) {
       pcod_common::BoundingBox a;
       a.center = {0.0f, 0.0f};
@@ -210,15 +207,15 @@ int main() {
         cpp_kept_x.push_back(box.center[0]);
       }
 
-      const auto py_nms = RunCommandCapture(
-          py_prefix +
-          "from pcod_common.postprocess import apply_nms; "
-          "import torch; "
-          "boxes=torch.tensor([[0.0,0.0,0.0,1.0,1.0,1.0,0.0],[0.1,0.0,0.0,1.0,1.0,1.0,0.0],[10.0,0.0,0.0,1.0,1.0,1.0,0.0]],dtype=torch.float32); "
-          "scores=torch.tensor([0.9,0.8,0.7],dtype=torch.float32); "
-          "labels=torch.tensor([0,0,0],dtype=torch.long); "
-          "kept_boxes,_,_=apply_nms(boxes,scores,labels,[0.5],0.1,10,use_rotated=False); "
-          "print(','.join(str(float(v)) for v in kept_boxes[:,0].tolist()))\"");
+      const auto py_nms = RunCommandCapture(py_prefix +
+                                            "from pcod_common.postprocess import apply_nms; "
+                                            "import torch; "
+                                            "boxes=torch.tensor([[0.0,0.0,0.0,1.0,1.0,1.0,0.0],[0.1,0.0,0.0,1.0,1.0,1.0,0.0],[10."
+                                            "0,0.0,0.0,1.0,1.0,1.0,0.0]],dtype=torch.float32); "
+                                            "scores=torch.tensor([0.9,0.8,0.7],dtype=torch.float32); "
+                                            "labels=torch.tensor([0,0,0],dtype=torch.long); "
+                                            "kept_boxes,_,_=apply_nms(boxes,scores,labels,[0.5],0.1,10,use_rotated=False); "
+                                            "print(','.join(str(float(v)) for v in kept_boxes[:,0].tolist()))\"");
       assert(py_nms.exit_code == 0);
 
       const auto py_kept_x = ParseCsvFloats(py_nms.stdout_text);

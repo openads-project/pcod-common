@@ -12,12 +12,9 @@ namespace pcod_common {
 
 namespace {
 inline float sigmoid(float x) { return 1.0f / (1.0f + std::exp(-x)); }
-}
+}  // namespace
 
-std::vector<BoundingBox> DecodePbod(
-    const PbodOutputsView& outputs,
-    const PillarGrid& grid,
-    const PbodPostprocessConfig& config) {
+std::vector<BoundingBox> DecodePbod(const PbodOutputsView& outputs, const PillarGrid& grid, const PbodPostprocessConfig& config) {
   std::vector<BoundingBox> objects;
   if (outputs.focal_logits == nullptr || outputs.size_posterior == nullptr || outputs.class_logits == nullptr ||
       outputs.reg_logits == nullptr) {
@@ -52,8 +49,8 @@ std::vector<BoundingBox> DecodePbod(
     float score_thresh = 0.0f;
     if (!config.score_thresholds.empty()) {
       const std::size_t class_idx = static_cast<std::size_t>(best_class);
-      score_thresh = class_idx < config.score_thresholds.size() ? config.score_thresholds[class_idx]
-                                                                 : config.score_thresholds.front();
+      score_thresh =
+          class_idx < config.score_thresholds.size() ? config.score_thresholds[class_idx] : config.score_thresholds.front();
     }
 
     if (score < score_thresh) {

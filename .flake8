@@ -1,0 +1,12 @@
+# Copyright Institute for Automotive Engineering (ika), RWTH Aachen University
+# SPDX-License-Identifier: Apache-2.0
+
+[flake8]
+extend-ignore = D100, D202, D400, D401, E203
+import-order-style = smarkets
+max-line-length = 130
+show-source = true
+statistics = true
+inline-quotes = double
+multiline-quotes = double
+docstring-quotes = double

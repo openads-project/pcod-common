@@ -58,6 +58,7 @@ _NMS_KEYS = {"score_threshold", "iou_threshold", "max_num_objects"}
 
 
 def load_manifest(path: str | Path) -> Dict[str, Any]:
+    """Load and validate a model manifest from a YAML file."""
     payload = yaml.safe_load(Path(path).read_text())
     if not isinstance(payload, dict):
         raise ValueError("Manifest root must be a YAML mapping")
@@ -66,6 +67,7 @@ def load_manifest(path: str | Path) -> Dict[str, Any]:
 
 
 def score_threshold_list(value: Any) -> List[float]:
+    """Normalize a scalar or list score threshold to a list."""
     if isinstance(value, list):
         return [float(v) for v in value]
     if value is None:
@@ -152,9 +154,7 @@ def _validate_tensor_list(value: Any, *, field: str) -> None:
         shape = _require_non_empty_sequence(entry["shape"], field=f"{field}[{idx}].shape")
         for dim_idx, dim in enumerate(shape):
             if not isinstance(dim, (str, int)):
-                raise ValueError(
-                    f"Manifest field '{field}[{idx}].shape[{dim_idx}]' must be a string or integer"
-                )
+                raise ValueError(f"Manifest field '{field}[{idx}].shape[{dim_idx}]' must be a string or integer")
         if "description" in entry:
             _require_non_empty_string(entry["description"], field=f"{field}[{idx}].description")
 
@@ -169,9 +169,7 @@ def _validate_size_priors(value: Any, *, field: str) -> None:
             try:
                 float(element)
             except (TypeError, ValueError) as exc:
-                raise ValueError(
-                    f"Manifest field '{field}[{idx}][{element_idx}]' must be numeric"
-                ) from exc
+                raise ValueError(f"Manifest field '{field}[{idx}][{element_idx}]' must be numeric") from exc
 
 
 def _validate_artifact(payload: Dict[str, Any]) -> None:
@@ -207,9 +205,7 @@ def _validate_artifact(payload: Dict[str, Any]) -> None:
     _reject_unknown_keys(files, allowed=_ARTIFACT_FILE_KEYS, scope="artifact.files")
     _require_keys(files, ["checkpoint", "resolved_training_config"], scope="artifact.files")
     _require_bundle_relative_path(files["checkpoint"], field="artifact.files.checkpoint")
-    _require_bundle_relative_path(
-        files["resolved_training_config"], field="artifact.files.resolved_training_config"
-    )
+    _require_bundle_relative_path(files["resolved_training_config"], field="artifact.files.resolved_training_config")
     for optional_file_key in ("model", "triton_repository", "triton_config", "triton_model"):
         if optional_file_key in files:
             _require_bundle_relative_path(files[optional_file_key], field=f"artifact.files.{optional_file_key}")
@@ -225,9 +221,7 @@ def _validate_artifact(payload: Dict[str, Any]) -> None:
         _require_non_empty_string(triton["model_version"], field="artifact.triton.model_version")
         for required in ("triton_repository", "triton_config", "triton_model"):
             if required not in files:
-                raise ValueError(
-                    f"Manifest artifact.files missing required key '{required}' for Triton exports"
-                )
+                raise ValueError(f"Manifest artifact.files missing required key '{required}' for Triton exports")
     elif "model" not in files:
         raise ValueError("Manifest artifact.files must define 'model' for non-Triton exports")
 
@@ -269,7 +263,9 @@ def _validate_frozen_contract(payload: Dict[str, Any]) -> None:
     )
 
     point_cloud_range = _require_mapping(preprocessing, "point_cloud_range")
-    _reject_unknown_keys(point_cloud_range, allowed=_POINT_CLOUD_RANGE_KEYS, scope="frozen_contract.preprocessing.point_cloud_range")
+    _reject_unknown_keys(
+        point_cloud_range, allowed=_POINT_CLOUD_RANGE_KEYS, scope="frozen_contract.preprocessing.point_cloud_range"
+    )
     _require_keys(point_cloud_range, ["x", "y", "z"], scope="frozen_contract.preprocessing.point_cloud_range")
     for axis in ("x", "y", "z"):
         _require_range2(point_cloud_range[axis], field=f"frozen_contract.preprocessing.point_cloud_range.{axis}")
@@ -289,23 +285,15 @@ def _validate_frozen_contract(payload: Dict[str, Any]) -> None:
     _require_keys(norm, ["type", "epsilon"], scope="frozen_contract.preprocessing.point_feature_normalization")
     epsilon = float(norm["epsilon"])
     if epsilon <= 0.0:
-        raise ValueError(
-            "Manifest field 'frozen_contract.preprocessing.point_feature_normalization.epsilon' must be > 0"
-        )
+        raise ValueError("Manifest field 'frozen_contract.preprocessing.point_feature_normalization.epsilon' must be > 0")
     norm_type = str(norm["type"])
     if norm_type == "min_max":
         if "min_value" not in norm or "max_value" not in norm:
-            raise ValueError(
-                "Manifest frozen_contract preprocessing min_max normalization requires min_value and max_value"
-            )
+            raise ValueError("Manifest frozen_contract preprocessing min_max normalization requires min_value and max_value")
         if float(norm["min_value"]) >= float(norm["max_value"]):
-            raise ValueError(
-                "Manifest frozen_contract preprocessing min_max normalization requires min_value < max_value"
-            )
+            raise ValueError("Manifest frozen_contract preprocessing min_max normalization requires min_value < max_value")
     elif norm_type not in {"none", "value_threshold", "min_max", "z_score"}:
-        raise ValueError(
-            "Manifest field 'frozen_contract.preprocessing.point_feature_normalization.type' is invalid"
-        )
+        raise ValueError("Manifest field 'frozen_contract.preprocessing.point_feature_normalization.type' is invalid")
 
     postprocessing = _require_mapping(payload, "postprocessing")
     _reject_unknown_keys(postprocessing, allowed=_POSTPROCESSING_KEYS, scope="frozen_contract.postprocessing")
@@ -326,9 +314,7 @@ def _validate_frozen_contract(payload: Dict[str, Any]) -> None:
     )
     class_names = postprocessing["class_names"]
     if not isinstance(class_names, list) or len(class_names) != num_classes:
-        raise ValueError(
-            "Manifest field 'frozen_contract.postprocessing.class_names' must contain one entry per class"
-        )
+        raise ValueError("Manifest field 'frozen_contract.postprocessing.class_names' must contain one entry per class")
     for idx, class_name in enumerate(class_names):
         _require_non_empty_string(class_name, field=f"frozen_contract.postprocessing.class_names[{idx}]")
 
@@ -357,9 +343,7 @@ def _validate_frozen_contract(payload: Dict[str, Any]) -> None:
     pillar_map_size = _require_range2(model["pillar_map_size"], field="frozen_contract.model.pillar_map_size")
     for idx, value in enumerate(pillar_map_size):
         if int(value) <= 0:
-            raise ValueError(
-                f"Manifest field 'frozen_contract.model.pillar_map_size[{idx}]' must be positive"
-            )
+            raise ValueError(f"Manifest field 'frozen_contract.model.pillar_map_size[{idx}]' must be positive")
     pillar_map_range = model["pillar_map_range"]
     if not isinstance(pillar_map_range, list) or len(pillar_map_range) != 3:
         raise ValueError("Manifest field 'frozen_contract.model.pillar_map_range' must contain three ranges")
@@ -379,9 +363,7 @@ def _validate_runtime_defaults(payload: Dict[str, Any], *, norm_type: str, num_c
     if norm_type == "value_threshold":
         value_threshold = float(point_feature.get("value_threshold", 0.0))
         if value_threshold <= 0.0:
-            raise ValueError(
-                "Manifest field 'runtime_defaults.preprocessing.point_feature.value_threshold' must be > 0"
-            )
+            raise ValueError("Manifest field 'runtime_defaults.preprocessing.point_feature.value_threshold' must be > 0")
     elif "value_threshold" in point_feature:
         float(point_feature["value_threshold"])
 
@@ -399,9 +381,7 @@ def _validate_runtime_defaults(payload: Dict[str, Any], *, norm_type: str, num_c
         ["score_threshold", "iou_threshold", "max_num_objects"],
         scope="runtime_defaults.postprocessing.nms",
     )
-    _require_probability(
-        nms["iou_threshold"], field="runtime_defaults.postprocessing.nms.iou_threshold"
-    )
+    _require_probability(nms["iou_threshold"], field="runtime_defaults.postprocessing.nms.iou_threshold")
     _require_non_negative_int(
         nms["max_num_objects"],
         field="runtime_defaults.postprocessing.nms.max_num_objects",
@@ -418,12 +398,11 @@ def _validate_runtime_defaults(payload: Dict[str, Any], *, norm_type: str, num_c
 
 
 def validate_manifest(payload: Dict[str, Any]) -> None:
+    """Validate the structure and values of a model manifest."""
     _reject_unknown_keys(payload, allowed=_ROOT_KEYS, scope="root")
     _require_keys(payload, ["schema_version", "artifact", "frozen_contract", "runtime_defaults"], scope="root")
     if payload["schema_version"] != SCHEMA_VERSION:
-        raise ValueError(
-            f"Unsupported manifest schema_version '{payload['schema_version']}', expected '{SCHEMA_VERSION}'"
-        )
+        raise ValueError(f"Unsupported manifest schema_version '{payload['schema_version']}', expected '{SCHEMA_VERSION}'")
 
     artifact = _require_mapping(payload, "artifact")
     frozen_contract = _require_mapping(payload, "frozen_contract")

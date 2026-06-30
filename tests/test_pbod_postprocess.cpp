@@ -10,8 +10,7 @@
 #include "pcod_common/pillar_grid.hpp"
 
 int main() {
-  pcod_common::PillarGrid grid = pcod_common::BuildPillarGrid(
-      {1, 1}, {{{0.0f, 1.0f}, {0.0f, 1.0f}, {0.0f, 1.0f}}}, 1, 1);
+  pcod_common::PillarGrid grid = pcod_common::BuildPillarGrid({1, 1}, {{{0.0f, 1.0f}, {0.0f, 1.0f}, {0.0f, 1.0f}}}, 1, 1);
 
   const int num_pillars = 1;
   const int num_classes = 2;

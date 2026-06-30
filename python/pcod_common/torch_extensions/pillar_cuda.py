@@ -43,6 +43,7 @@ def _resolve_csrc_dir() -> Path:
 
 
 def load_pillar_cuda_extension():
+    """Import, reuse, or build the CUDA pillar extension."""
     imported = import_first_available(("pcod_common._pillar_cuda", "pcod_common__pillar_cuda"))
     if imported is not None:
         return imported
@@ -167,6 +168,7 @@ def pillar_preprocess(
     grid_x: int,
     grid_y: int,
 ):
+    """Preprocess points into pillars with the CUDA extension."""
     try:
         import torch
 

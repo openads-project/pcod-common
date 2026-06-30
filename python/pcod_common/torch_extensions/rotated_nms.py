@@ -33,9 +33,7 @@ def _resolve_csrc_dir() -> Path:
     )
 
     for candidate in candidates:
-        if (candidate / "rotated_nms.cpp").exists() and (
-            candidate / "rotated_nms_cuda.cu"
-        ).exists():
+        if (candidate / "rotated_nms.cpp").exists() and (candidate / "rotated_nms_cuda.cu").exists():
             return candidate
 
     searched = ", ".join(str(path) for path in candidates)
@@ -46,6 +44,7 @@ def _resolve_csrc_dir() -> Path:
 
 
 def load_rotated_nms_extension(force_build: bool | None = None):
+    """Import, reuse, or build the rotated-NMS CUDA extension."""
     imported = import_first_available(("pcod_common._rotated_nms", "pcod_common__rotated_nms"))
     if imported is not None:
         return imported

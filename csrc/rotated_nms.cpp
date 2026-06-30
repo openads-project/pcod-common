@@ -16,21 +16,13 @@ namespace {
 using Point = std::array<float, 2>;
 using Polygon = std::vector<Point>;
 
-inline float cross(const Point& a, const Point& b) {
-  return a[0] * b[1] - a[1] * b[0];
-}
+inline float cross(const Point& a, const Point& b) { return a[0] * b[1] - a[1] * b[0]; }
 
-inline Point operator+(const Point& a, const Point& b) {
-  return {a[0] + b[0], a[1] + b[1]};
-}
+inline Point operator+(const Point& a, const Point& b) { return {a[0] + b[0], a[1] + b[1]}; }
 
-inline Point operator-(const Point& a, const Point& b) {
-  return {a[0] - b[0], a[1] - b[1]};
-}
+inline Point operator-(const Point& a, const Point& b) { return {a[0] - b[0], a[1] - b[1]}; }
 
-inline Point operator*(const Point& a, float t) {
-  return {a[0] * t, a[1] * t};
-}
+inline Point operator*(const Point& a, float t) { return {a[0] * t, a[1] * t}; }
 
 Polygon rectangle_vertices(const at::Tensor& box) {
   // box: [x, y, z, l, w, h, yaw]
@@ -55,12 +47,12 @@ Polygon rectangle_vertices(const at::Tensor& box) {
   // --- enforce CCW winding ---
   float area2 = 0.0f;
   for (int i = 0; i < 4; i++) {
-      const auto& p = verts[i];
-      const auto& q = verts[(i + 1) % 4];
-      area2 += p[0] * q[1] - p[1] * q[0];
+    const auto& p = verts[i];
+    const auto& q = verts[(i + 1) % 4];
+    area2 += p[0] * q[1] - p[1] * q[0];
   }
   if (area2 < 0.0f) {
-      std::reverse(verts.begin(), verts.end());
+    std::reverse(verts.begin(), verts.end());
   }
 
   return verts;

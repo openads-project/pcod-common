@@ -24,9 +24,8 @@ PointFeatureNormalizationType ParsePointFeatureNormalizationType(const std::stri
 }
 
 bool PointPreprocessor::IsPointValid(float x, float y, float z) const {
-  const bool in_range =
-      (x >= config_.x_min && x < config_.x_max && !std::isnan(x) && y >= config_.y_min && y < config_.y_max &&
-       !std::isnan(y) && z >= config_.z_min && z < config_.z_max && !std::isnan(z));
+  const bool in_range = (x >= config_.x_min && x < config_.x_max && !std::isnan(x) && y >= config_.y_min && y < config_.y_max &&
+                         !std::isnan(y) && z >= config_.z_min && z < config_.z_max && !std::isnan(z));
   if (!in_range) {
     return false;
   }
@@ -52,8 +51,7 @@ bool PointPreprocessor::IsPointValid(float x, float y, float z) const {
   }
 
   if (config_.remove_points_in_zone) {
-    const bool in_nd_zone =
-        (x >= config_.nd_x_min && x <= config_.nd_x_max && y >= config_.nd_y_min && y <= config_.nd_y_max);
+    const bool in_nd_zone = (x >= config_.nd_x_min && x <= config_.nd_x_max && y >= config_.nd_y_min && y <= config_.nd_y_max);
     if (in_nd_zone) {
       return false;
     }

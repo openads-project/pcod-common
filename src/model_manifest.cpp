@@ -238,16 +238,13 @@ ModelManifest LoadModelManifest(const std::string& path) {
     EnsureKnownKeys(root, "root", {"schema_version", "artifact", "frozen_contract", "runtime_defaults"});
 
     const YAML::Node artifact = RequireChild(root, "artifact", "artifact");
-    EnsureKnownKeys(
-        artifact,
-        "artifact",
-        {"bundle_name", "export_format", "backend", "precision", "device", "head_name", "export_timestamp_utc",
-         "files", "triton", "inputs", "outputs", "size_priors", "size_priors_source"});
+    EnsureKnownKeys(artifact, "artifact",
+                    {"bundle_name", "export_format", "backend", "precision", "device", "head_name", "export_timestamp_utc",
+                     "files", "triton", "inputs", "outputs", "size_priors", "size_priors_source"});
 
     const YAML::Node files = RequireChild(artifact, "files", "artifact.files");
     EnsureKnownKeys(files, "artifact.files",
-                    {"model", "checkpoint", "resolved_training_config", "triton_repository", "triton_config",
-                     "triton_model"});
+                    {"model", "checkpoint", "resolved_training_config", "triton_repository", "triton_config", "triton_model"});
 
     const YAML::Node triton = RequireChild(artifact, "triton", "artifact.triton");
     EnsureKnownKeys(triton, "artifact.triton", {"enabled", "model_name", "model_version"});
@@ -260,8 +257,7 @@ ModelManifest LoadModelManifest(const std::string& path) {
 
     const YAML::Node preprocessing = RequireChild(frozen_contract, "preprocessing", "frozen_contract.preprocessing");
     EnsureKnownKeys(preprocessing, "frozen_contract.preprocessing",
-                    {"max_num_points", "num_point_features", "point_cloud_range", "voxel_size",
-                     "point_feature_normalization"});
+                    {"max_num_points", "num_point_features", "point_cloud_range", "voxel_size", "point_feature_normalization"});
 
     const YAML::Node point_cloud_range =
         RequireChild(preprocessing, "point_cloud_range", "frozen_contract.preprocessing.point_cloud_range");
@@ -270,13 +266,12 @@ ModelManifest LoadModelManifest(const std::string& path) {
     const YAML::Node voxel_size = RequireChild(preprocessing, "voxel_size", "frozen_contract.preprocessing.voxel_size");
     EnsureKnownKeys(voxel_size, "frozen_contract.preprocessing.voxel_size", {"x", "y", "z"});
 
-    const YAML::Node normalization = RequireChild(
-        preprocessing, "point_feature_normalization", "frozen_contract.preprocessing.point_feature_normalization");
+    const YAML::Node normalization =
+        RequireChild(preprocessing, "point_feature_normalization", "frozen_contract.preprocessing.point_feature_normalization");
     EnsureKnownKeys(normalization, "frozen_contract.preprocessing.point_feature_normalization",
                     {"type", "min_value", "max_value", "epsilon"});
 
-    const YAML::Node postprocessing =
-        RequireChild(frozen_contract, "postprocessing", "frozen_contract.postprocessing");
+    const YAML::Node postprocessing = RequireChild(frozen_contract, "postprocessing", "frozen_contract.postprocessing");
     EnsureKnownKeys(postprocessing, "frozen_contract.postprocessing", {"grid_size", "num_classes", "class_names"});
 
     const YAML::Node grid_size = RequireChild(postprocessing, "grid_size", "frozen_contract.postprocessing.grid_size");
@@ -289,16 +284,14 @@ ModelManifest LoadModelManifest(const std::string& path) {
     const YAML::Node runtime_defaults = RequireChild(root, "runtime_defaults", "runtime_defaults");
     EnsureKnownKeys(runtime_defaults, "runtime_defaults", {"preprocessing", "postprocessing"});
 
-    const YAML::Node runtime_preprocessing =
-        RequireChild(runtime_defaults, "preprocessing", "runtime_defaults.preprocessing");
+    const YAML::Node runtime_preprocessing = RequireChild(runtime_defaults, "preprocessing", "runtime_defaults.preprocessing");
     EnsureKnownKeys(runtime_preprocessing, "runtime_defaults.preprocessing", {"point_feature"});
 
     const YAML::Node point_feature =
         RequireChild(runtime_preprocessing, "point_feature", "runtime_defaults.preprocessing.point_feature");
     EnsureKnownKeys(point_feature, "runtime_defaults.preprocessing.point_feature", {"value_threshold"});
 
-    const YAML::Node runtime_postprocessing =
-        RequireChild(runtime_defaults, "postprocessing", "runtime_defaults.postprocessing");
+    const YAML::Node runtime_postprocessing = RequireChild(runtime_defaults, "postprocessing", "runtime_defaults.postprocessing");
     EnsureKnownKeys(runtime_postprocessing, "runtime_defaults.postprocessing", {"class_score_threshold", "nms"});
 
     const YAML::Node nms = RequireChild(runtime_postprocessing, "nms", "runtime_defaults.postprocessing.nms");
@@ -312,12 +305,10 @@ ModelManifest LoadModelManifest(const std::string& path) {
         RequireScalarText(RequireChild(artifact, "bundle_name", "artifact.bundle_name"), "artifact.bundle_name");
     manifest.artifact.export_format =
         RequireScalarText(RequireChild(artifact, "export_format", "artifact.export_format"), "artifact.export_format");
-    manifest.artifact.backend =
-        RequireScalarText(RequireChild(artifact, "backend", "artifact.backend"), "artifact.backend");
+    manifest.artifact.backend = RequireScalarText(RequireChild(artifact, "backend", "artifact.backend"), "artifact.backend");
     manifest.artifact.precision =
         RequireScalarText(RequireChild(artifact, "precision", "artifact.precision"), "artifact.precision");
-    manifest.artifact.device =
-        RequireScalarText(RequireChild(artifact, "device", "artifact.device"), "artifact.device");
+    manifest.artifact.device = RequireScalarText(RequireChild(artifact, "device", "artifact.device"), "artifact.device");
     manifest.artifact.head_name = LoadOptionalText(LoadOptionalChild(artifact, "head_name"), "artifact.head_name");
     manifest.artifact.export_timestamp_utc =
         LoadOptionalText(LoadOptionalChild(artifact, "export_timestamp_utc"), "artifact.export_timestamp_utc");
@@ -325,9 +316,9 @@ ModelManifest LoadModelManifest(const std::string& path) {
     manifest.artifact.files.model = LoadOptionalText(LoadOptionalChild(files, "model"), "artifact.files.model");
     manifest.artifact.files.checkpoint =
         RequireScalarText(RequireChild(files, "checkpoint", "artifact.files.checkpoint"), "artifact.files.checkpoint");
-    manifest.artifact.files.resolved_training_config = RequireScalarText(
-        RequireChild(files, "resolved_training_config", "artifact.files.resolved_training_config"),
-        "artifact.files.resolved_training_config");
+    manifest.artifact.files.resolved_training_config =
+        RequireScalarText(RequireChild(files, "resolved_training_config", "artifact.files.resolved_training_config"),
+                          "artifact.files.resolved_training_config");
     manifest.artifact.files.triton_repository =
         LoadOptionalText(LoadOptionalChild(files, "triton_repository"), "artifact.files.triton_repository");
     manifest.artifact.files.triton_config =
@@ -337,8 +328,7 @@ ModelManifest LoadModelManifest(const std::string& path) {
 
     manifest.artifact.triton.enabled =
         RequireScalarValue<bool>(RequireChild(triton, "enabled", "artifact.triton.enabled"), "artifact.triton.enabled");
-    manifest.artifact.triton.model_name =
-        LoadOptionalText(LoadOptionalChild(triton, "model_name"), "artifact.triton.model_name");
+    manifest.artifact.triton.model_name = LoadOptionalText(LoadOptionalChild(triton, "model_name"), "artifact.triton.model_name");
     manifest.artifact.triton.model_version =
         LoadOptionalText(LoadOptionalChild(triton, "model_version"), "artifact.triton.model_version");
 
@@ -348,9 +338,9 @@ ModelManifest LoadModelManifest(const std::string& path) {
     manifest.artifact.size_priors_source =
         LoadOptionalText(LoadOptionalChild(artifact, "size_priors_source"), "artifact.size_priors_source");
 
-    manifest.frozen_contract.preprocessing.max_num_points = RequireScalarValue<int>(
-        RequireChild(preprocessing, "max_num_points", "frozen_contract.preprocessing.max_num_points"),
-        "frozen_contract.preprocessing.max_num_points");
+    manifest.frozen_contract.preprocessing.max_num_points =
+        RequireScalarValue<int>(RequireChild(preprocessing, "max_num_points", "frozen_contract.preprocessing.max_num_points"),
+                                "frozen_contract.preprocessing.max_num_points");
     manifest.frozen_contract.preprocessing.num_point_features = RequireScalarValue<int>(
         RequireChild(preprocessing, "num_point_features", "frozen_contract.preprocessing.num_point_features"),
         "frozen_contract.preprocessing.num_point_features");
@@ -372,9 +362,9 @@ ModelManifest LoadModelManifest(const std::string& path) {
     manifest.frozen_contract.preprocessing.voxel_z =
         RequireScalarValue<float>(RequireChild(voxel_size, "z", "frozen_contract.preprocessing.voxel_size.z"),
                                   "frozen_contract.preprocessing.voxel_size.z");
-    manifest.frozen_contract.preprocessing.point_feature_normalization.type = RequireScalarText(
-        RequireChild(normalization, "type", "frozen_contract.preprocessing.point_feature_normalization.type"),
-        "frozen_contract.preprocessing.point_feature_normalization.type");
+    manifest.frozen_contract.preprocessing.point_feature_normalization.type =
+        RequireScalarText(RequireChild(normalization, "type", "frozen_contract.preprocessing.point_feature_normalization.type"),
+                          "frozen_contract.preprocessing.point_feature_normalization.type");
     manifest.frozen_contract.preprocessing.point_feature_normalization.epsilon = RequireScalarValue<float>(
         RequireChild(normalization, "epsilon", "frozen_contract.preprocessing.point_feature_normalization.epsilon"),
         "frozen_contract.preprocessing.point_feature_normalization.epsilon");
@@ -387,32 +377,26 @@ ModelManifest LoadModelManifest(const std::string& path) {
           "frozen_contract.preprocessing.point_feature_normalization.max_value");
     }
 
-    manifest.frozen_contract.postprocessing.grid_x =
-        RequireScalarValue<int>(RequireChild(grid_size, "x", "frozen_contract.postprocessing.grid_size.x"),
-                                "frozen_contract.postprocessing.grid_size.x");
-    manifest.frozen_contract.postprocessing.grid_y =
-        RequireScalarValue<int>(RequireChild(grid_size, "y", "frozen_contract.postprocessing.grid_size.y"),
-                                "frozen_contract.postprocessing.grid_size.y");
-    manifest.frozen_contract.postprocessing.num_classes = RequireScalarValue<int>(
-        RequireChild(postprocessing, "num_classes", "frozen_contract.postprocessing.num_classes"),
-        "frozen_contract.postprocessing.num_classes");
+    manifest.frozen_contract.postprocessing.grid_x = RequireScalarValue<int>(
+        RequireChild(grid_size, "x", "frozen_contract.postprocessing.grid_size.x"), "frozen_contract.postprocessing.grid_size.x");
+    manifest.frozen_contract.postprocessing.grid_y = RequireScalarValue<int>(
+        RequireChild(grid_size, "y", "frozen_contract.postprocessing.grid_size.y"), "frozen_contract.postprocessing.grid_size.y");
+    manifest.frozen_contract.postprocessing.num_classes =
+        RequireScalarValue<int>(RequireChild(postprocessing, "num_classes", "frozen_contract.postprocessing.num_classes"),
+                                "frozen_contract.postprocessing.num_classes");
     manifest.frozen_contract.postprocessing.class_names =
         RequireStringSequence(RequireChild(postprocessing, "class_names", "frozen_contract.postprocessing.class_names"),
                               "frozen_contract.postprocessing.class_names");
 
     manifest.frozen_contract.model.stride =
-        RequirePositiveIntSequence(RequireChild(model, "stride", "frozen_contract.model.stride"),
-                                   "frozen_contract.model.stride");
-    manifest.frozen_contract.model.up_stride =
-        RequirePositiveIntSequence(RequireChild(model, "up_stride", "frozen_contract.model.up_stride"),
-                                   "frozen_contract.model.up_stride");
+        RequirePositiveIntSequence(RequireChild(model, "stride", "frozen_contract.model.stride"), "frozen_contract.model.stride");
+    manifest.frozen_contract.model.up_stride = RequirePositiveIntSequence(
+        RequireChild(model, "up_stride", "frozen_contract.model.up_stride"), "frozen_contract.model.up_stride");
     manifest.frozen_contract.model.first_up_stride = RequireScalarValue<int>(
-        RequireChild(model, "first_up_stride", "frozen_contract.model.first_up_stride"),
-        "frozen_contract.model.first_up_stride");
+        RequireChild(model, "first_up_stride", "frozen_contract.model.first_up_stride"), "frozen_contract.model.first_up_stride");
 
     {
-      const YAML::Node pillar_map_size =
-          RequireChild(model, "pillar_map_size", "frozen_contract.model.pillar_map_size");
+      const YAML::Node pillar_map_size = RequireChild(model, "pillar_map_size", "frozen_contract.model.pillar_map_size");
       EnsureSequence(pillar_map_size, "frozen_contract.model.pillar_map_size");
       if (pillar_map_size.size() != 2) {
         throw std::runtime_error("Manifest field 'frozen_contract.model.pillar_map_size' must be a 2-element sequence");
@@ -421,8 +405,7 @@ ModelManifest LoadModelManifest(const std::string& path) {
     }
 
     {
-      const YAML::Node pillar_map_range =
-          RequireChild(model, "pillar_map_range", "frozen_contract.model.pillar_map_range");
+      const YAML::Node pillar_map_range = RequireChild(model, "pillar_map_range", "frozen_contract.model.pillar_map_range");
       EnsureSequence(pillar_map_range, "frozen_contract.model.pillar_map_range");
       if (pillar_map_range.size() != 3) {
         throw std::runtime_error("Manifest field 'frozen_contract.model.pillar_map_range' must contain three ranges");
@@ -433,21 +416,21 @@ ModelManifest LoadModelManifest(const std::string& path) {
           RequireRange2(pillar_map_range[2], "frozen_contract.model.pillar_map_range[2]")};
     }
 
-    manifest.runtime_defaults.preprocessing.point_feature.value_threshold = LoadOptionalScalarValue<float>(
-        LoadOptionalChild(point_feature, "value_threshold"), "runtime_defaults.preprocessing.point_feature.value_threshold",
-        0.0f);
+    manifest.runtime_defaults.preprocessing.point_feature.value_threshold =
+        LoadOptionalScalarValue<float>(LoadOptionalChild(point_feature, "value_threshold"),
+                                       "runtime_defaults.preprocessing.point_feature.value_threshold", 0.0f);
     manifest.runtime_defaults.postprocessing.class_score_threshold = RequireScalarValue<float>(
         RequireChild(runtime_postprocessing, "class_score_threshold", "runtime_defaults.postprocessing.class_score_threshold"),
         "runtime_defaults.postprocessing.class_score_threshold");
-    manifest.runtime_defaults.postprocessing.nms_score_thresholds = RequireScoreThresholds(
-        RequireChild(nms, "score_threshold", "runtime_defaults.postprocessing.nms.score_threshold"),
-        "runtime_defaults.postprocessing.nms.score_threshold");
-    manifest.runtime_defaults.postprocessing.nms_iou_threshold = RequireScalarValue<float>(
-        RequireChild(nms, "iou_threshold", "runtime_defaults.postprocessing.nms.iou_threshold"),
-        "runtime_defaults.postprocessing.nms.iou_threshold");
-    manifest.runtime_defaults.postprocessing.max_detections = RequireScalarValue<int>(
-        RequireChild(nms, "max_num_objects", "runtime_defaults.postprocessing.nms.max_num_objects"),
-        "runtime_defaults.postprocessing.nms.max_num_objects");
+    manifest.runtime_defaults.postprocessing.nms_score_thresholds =
+        RequireScoreThresholds(RequireChild(nms, "score_threshold", "runtime_defaults.postprocessing.nms.score_threshold"),
+                               "runtime_defaults.postprocessing.nms.score_threshold");
+    manifest.runtime_defaults.postprocessing.nms_iou_threshold =
+        RequireScalarValue<float>(RequireChild(nms, "iou_threshold", "runtime_defaults.postprocessing.nms.iou_threshold"),
+                                  "runtime_defaults.postprocessing.nms.iou_threshold");
+    manifest.runtime_defaults.postprocessing.max_detections =
+        RequireScalarValue<int>(RequireChild(nms, "max_num_objects", "runtime_defaults.postprocessing.nms.max_num_objects"),
+                                "runtime_defaults.postprocessing.nms.max_num_objects");
 
     ValidateModelManifest(manifest);
     return manifest;
@@ -480,8 +463,7 @@ void ValidateModelManifest(const ModelManifest& manifest) {
     RequireBundleRelativePath(manifest.artifact.files.model, "artifact.files.model");
   }
   RequireBundleRelativePath(manifest.artifact.files.checkpoint, "artifact.files.checkpoint");
-  RequireBundleRelativePath(manifest.artifact.files.resolved_training_config,
-                            "artifact.files.resolved_training_config");
+  RequireBundleRelativePath(manifest.artifact.files.resolved_training_config, "artifact.files.resolved_training_config");
   if (!manifest.artifact.files.triton_repository.empty()) {
     RequireBundleRelativePath(manifest.artifact.files.triton_repository, "artifact.files.triton_repository");
   }
@@ -535,8 +517,7 @@ void ValidateModelManifest(const ModelManifest& manifest) {
       static_cast<std::size_t>(manifest.frozen_contract.postprocessing.num_classes)) {
     throw std::runtime_error("frozen_contract.postprocessing.class_names must contain one entry per class");
   }
-  if (manifest.frozen_contract.model.pillar_map_size[0] <= 0 ||
-      manifest.frozen_contract.model.pillar_map_size[1] <= 0) {
+  if (manifest.frozen_contract.model.pillar_map_size[0] <= 0 || manifest.frozen_contract.model.pillar_map_size[1] <= 0) {
     throw std::runtime_error("frozen_contract.model.pillar_map_size must be positive");
   }
   if (manifest.frozen_contract.model.stride.empty()) {
@@ -560,8 +541,7 @@ void ValidateModelManifest(const ModelManifest& manifest) {
     }
   } else if (norm.type == "min_max") {
     if (!(norm.min_value < norm.max_value)) {
-      throw std::runtime_error(
-          "frozen_contract.preprocessing.point_feature_normalization requires min_value < max_value");
+      throw std::runtime_error("frozen_contract.preprocessing.point_feature_normalization requires min_value < max_value");
     }
   } else if (norm.type == "z_score") {
     // ok
@@ -584,10 +564,8 @@ void ValidateModelManifest(const ModelManifest& manifest) {
     throw std::runtime_error("runtime_defaults.postprocessing.nms.score_threshold must not be empty");
   }
   const std::size_t score_count = manifest.runtime_defaults.postprocessing.nms_score_thresholds.size();
-  if (score_count != 1 &&
-      score_count != static_cast<std::size_t>(manifest.frozen_contract.postprocessing.num_classes)) {
-    throw std::runtime_error(
-        "runtime_defaults.postprocessing.nms.score_threshold must contain one value or one value per class");
+  if (score_count != 1 && score_count != static_cast<std::size_t>(manifest.frozen_contract.postprocessing.num_classes)) {
+    throw std::runtime_error("runtime_defaults.postprocessing.nms.score_threshold must contain one value or one value per class");
   }
   for (float threshold : manifest.runtime_defaults.postprocessing.nms_score_thresholds) {
     if (threshold < 0.0f || threshold > 1.0f) {

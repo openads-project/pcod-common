@@ -61,14 +61,11 @@ int main() {
   }
 
   {
-    assert(pcod_common::ParsePointFeatureNormalizationType("none") ==
-           pcod_common::PointFeatureNormalizationType::kNone);
+    assert(pcod_common::ParsePointFeatureNormalizationType("none") == pcod_common::PointFeatureNormalizationType::kNone);
     assert(pcod_common::ParsePointFeatureNormalizationType("value_threshold") ==
            pcod_common::PointFeatureNormalizationType::kValueThreshold);
-    assert(pcod_common::ParsePointFeatureNormalizationType("min_max") ==
-           pcod_common::PointFeatureNormalizationType::kMinMax);
-    assert(pcod_common::ParsePointFeatureNormalizationType("z_score") ==
-           pcod_common::PointFeatureNormalizationType::kZScore);
+    assert(pcod_common::ParsePointFeatureNormalizationType("min_max") == pcod_common::PointFeatureNormalizationType::kMinMax);
+    assert(pcod_common::ParsePointFeatureNormalizationType("z_score") == pcod_common::PointFeatureNormalizationType::kZScore);
     bool threw = false;
     try {
       (void)pcod_common::ParsePointFeatureNormalizationType("unsupported");

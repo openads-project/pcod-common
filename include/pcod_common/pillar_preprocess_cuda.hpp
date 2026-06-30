@@ -69,10 +69,16 @@ class PillarPreprocessCudaContext {
   PillarPreprocessCudaContext& operator=(PillarPreprocessCudaContext&&) noexcept;
 
   bool isAvailable() const;
-  bool run(const PillarPreprocessPoint* points, std::int32_t num_points, const PillarPreprocessCudaConfig& config,
-           const PillarPreprocessCudaOutputs& outputs, std::string* error_message);
-  bool runToDevice(const PillarPreprocessPoint* points, std::int32_t num_points, const PillarPreprocessCudaConfig& config,
-                   const PillarPreprocessCudaDeviceOutputs& outputs, std::string* error_message);
+  bool run(const PillarPreprocessPoint* points,
+           std::int32_t num_points,
+           const PillarPreprocessCudaConfig& config,
+           const PillarPreprocessCudaOutputs& outputs,
+           std::string* error_message);
+  bool runToDevice(const PillarPreprocessPoint* points,
+                   std::int32_t num_points,
+                   const PillarPreprocessCudaConfig& config,
+                   const PillarPreprocessCudaDeviceOutputs& outputs,
+                   std::string* error_message);
 
  private:
   struct Impl;

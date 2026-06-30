@@ -22,10 +22,9 @@ struct PillarGrid {
   const float* center_at(int idx) const { return centers.data() + static_cast<std::size_t>(idx) * 3; }
 };
 
-PillarGrid BuildPillarGrid(
-    const std::array<int, 2>& pillar_map_size,
-    const std::array<std::array<float, 2>, 3>& pillar_map_range,
-    int first_up_stride,
-    int stride);
+PillarGrid BuildPillarGrid(const std::array<int, 2>& pillar_map_size,
+                           const std::array<std::array<float, 2>, 3>& pillar_map_range,
+                           int first_up_stride,
+                           int stride);
 
 }  // namespace pcod_common

@@ -8,8 +8,7 @@
 
 int main() {
   {
-    auto grid = pcod_common::BuildPillarGrid(
-        {2, 3}, {{{0.0f, 2.0f}, {0.0f, 3.0f}, {-1.0f, 1.0f}}}, 1, 1);
+    auto grid = pcod_common::BuildPillarGrid({2, 3}, {{{0.0f, 2.0f}, {0.0f, 3.0f}, {-1.0f, 1.0f}}}, 1, 1);
     assert(grid.grid_x == 2);
     assert(grid.grid_y == 3);
 
@@ -31,8 +30,7 @@ int main() {
   }
 
   {
-    auto scaled = pcod_common::BuildPillarGrid(
-        {4, 4}, {{{0.0f, 4.0f}, {0.0f, 4.0f}, {-1.0f, 1.0f}}}, 1, 2);
+    auto scaled = pcod_common::BuildPillarGrid({4, 4}, {{{0.0f, 4.0f}, {0.0f, 4.0f}, {-1.0f, 1.0f}}}, 1, 2);
     assert(scaled.grid_x == 2);
     assert(scaled.grid_y == 2);
 

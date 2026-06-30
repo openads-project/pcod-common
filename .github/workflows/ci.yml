@@ -8,32 +8,8 @@ permissions:
   contents: read
 
 jobs:
-  license-headers:
-    name: License headers
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-      - name: Check source license headers
-        run: python3 scripts/check_license_headers.py
-
-  build-cmake:
-    name: CMake build
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake g++ pkg-config libyaml-cpp-dev
-      - name: Configure
-        run: cmake -S . -B build -DPCOD_COMMON_BUILD_TESTS=ON
-      - name: Build
-        run: cmake --build build
-
-  unit-tests:
-    name: C++ and Python tests
+  repository-checks:
+    name: Repository checks
     runs-on: ubuntu-22.04
     steps:
       - name: Check out repository
@@ -41,21 +17,106 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.12"
           cache: pip
+      - name: Install check tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format-18
+          python -m pip install "black==26.3.1" "flake8==7.3.0" flake8-docstrings flake8-import-order flake8-quotes
+      - name: Check source license headers
+        run: python scripts/check_license_headers.py
+      - name: Lint Python
+        run: |
+          black --check --line-length=130 python scripts
+          flake8 --config=.flake8 python scripts
+      - name: Check C++ and CUDA formatting
+        run: clang-format-18 --dry-run --Werror $(find csrc include src tests -type f \( -name '*.cpp' -o -name '*.cu' -o -name '*.hpp' \))
+
+  cmake:
+    name: CMake (${{ matrix.name }})
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: GCC
+            packages: g++
+            cc: gcc
+            cxx: g++
+            cmake_args: ""
+            run_tests: true
+          - name: Clang
+            packages: clang
+            cc: clang
+            cxx: clang++
+            cmake_args: ""
+            run_tests: true
+          - name: ASan and UBSan
+            packages: g++
+            cc: gcc
+            cxx: g++
+            cmake_args: -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-fsanitize=address,undefined -DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address,undefined
+            run_tests: true
+          - name: CUDA fallback
+            packages: g++
+            cc: gcc
+            cxx: g++
+            cmake_args: -DPCOD_COMMON_ENABLE_CUDA=ON
+            run_tests: false
+    env:
+      ASAN_OPTIONS: detect_leaks=0
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake g++ pkg-config libyaml-cpp-dev
-      - name: Configure CMake
-        run: cmake -S . -B build -DPCOD_COMMON_BUILD_TESTS=ON
-      - name: Build C++ tests
-        run: cmake --build build
-      - name: Install Python package
+          sudo apt-get install -y cmake ${{ matrix.packages }} pkg-config libyaml-cpp-dev python3
+      - name: Configure
+        run: cmake -S . -B build -DPCOD_COMMON_BUILD_TESTS=${{ matrix.run_tests }} ${{ matrix.cmake_args }}
+      - name: Build
+        run: cmake --build build --parallel 2
+      - name: Run C++ tests
+        if: matrix.run_tests
+        run: ctest --test-dir build --output-on-failure
+
+  python-tests:
+    name: Python ${{ matrix.python-version }}${{ matrix.full_suite && ' (full)' || '' }}
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python-version: "3.10"
+            full_suite: true
+          - python-version: "3.11"
+            full_suite: false
+          - python-version: "3.12"
+            full_suite: false
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install full Python package
+        if: matrix.full_suite
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
-      - name: Run C++ tests
-        run: ctest --test-dir build --output-on-failure
-      - name: Run Python tests
+      - name: Install lightweight compatibility dependencies
+        if: ${{ !matrix.full_suite }}
+        run: python -m pip install "pytest>=7.4" "PyYAML>=6.0"
+      - name: Run full Python test suite
+        if: matrix.full_suite
+        run: pytest -q
+      - name: Run CPU-only Python compatibility tests
+        if: ${{ !matrix.full_suite }}
+        env:
+          PYTHONPATH: python
         run: pytest -q

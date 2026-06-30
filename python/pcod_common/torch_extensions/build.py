@@ -36,6 +36,7 @@ def ensure_torch_extension_environment(
 
 
 def import_first_available(module_names: Sequence[str]) -> ModuleType | None:
+    """Import and return the first available module from a sequence."""
     for module_name in module_names:
         try:
             return importlib.import_module(module_name)
@@ -53,9 +54,7 @@ def load_cached_extension_module(
 ) -> ModuleType | None:
     """Import a fresh cached torch extension artifact if one exists."""
 
-    resolved_build_root = (
-        Path(build_root) if build_root is not None else Path(get_default_build_root())
-    )
+    resolved_build_root = Path(build_root) if build_root is not None else Path(get_default_build_root())
     candidates = sorted(
         resolved_build_root.glob(f"py*_cu*/{extension_name}/{extension_name}.so"),
         key=lambda path: path.stat().st_mtime,
@@ -83,6 +82,7 @@ def load_cached_extension_module(
 
 @contextmanager
 def exclusive_build_lock(path: Path):
+    """Acquire an exclusive filesystem lock while building an extension."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w") as fh:
         fcntl.flock(fh, fcntl.LOCK_EX)
@@ -135,9 +135,7 @@ def load_cached_torch_extension(
         imported = import_first_available(import_module_names)
         if imported is not None:
             return imported
-        cached_module = load_cached_extension_module(
-            primary_module_name, extension_name, source_paths
-        )
+        cached_module = load_cached_extension_module(primary_module_name, extension_name, source_paths)
         if cached_module is not None:
             return cached_module
         ext = load(

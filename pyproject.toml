@@ -31,6 +31,11 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+  "black==26.3.1",
+  "flake8==7.3.0",
+  "flake8-docstrings",
+  "flake8-import-order",
+  "flake8-quotes",
   "pytest>=7.4",
 ]
 
@@ -39,12 +44,3 @@ package-dir = {"" = "python"}
 
 [tool.setuptools.packages.find]
 where = ["python"]
-
-[tool.ruff]
-line-length = 130
-
-[tool.ruff.lint]
-select = ["I", "W", "D205"]
-
-[tool.ruff.format]
-quote-style = "preserve"

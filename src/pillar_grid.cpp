@@ -7,11 +7,10 @@
 
 namespace pcod_common {
 
-PillarGrid BuildPillarGrid(
-    const std::array<int, 2>& pillar_map_size,
-    const std::array<std::array<float, 2>, 3>& pillar_map_range,
-    int first_up_stride,
-    int stride) {
+PillarGrid BuildPillarGrid(const std::array<int, 2>& pillar_map_size,
+                           const std::array<std::array<float, 2>, 3>& pillar_map_range,
+                           int first_up_stride,
+                           int stride) {
   PillarGrid grid;
   const int size_x = pillar_map_size[0];
   const int size_y = pillar_map_size[1];

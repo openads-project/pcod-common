@@ -22,8 +22,7 @@ int main() {
   pcod_common::PointPreprocessor preprocessor(pre_cfg);
   assert(preprocessor.IsPointValid(0.5f, 0.1f, 0.0f));
 
-  pcod_common::PillarGrid grid = pcod_common::BuildPillarGrid(
-      {2, 2}, {{{0.0f, 2.0f}, {0.0f, 2.0f}, {0.0f, 1.0f}}}, 1, 1);
+  pcod_common::PillarGrid grid = pcod_common::BuildPillarGrid({2, 2}, {{{0.0f, 2.0f}, {0.0f, 2.0f}, {0.0f, 1.0f}}}, 1, 1);
 
   const int num_pillars = 4;
   const int num_classes = 2;

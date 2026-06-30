@@ -7,8 +7,8 @@ from __future__ import annotations
 
 from typing import List, Tuple
 
-from pcod_common.torch_extensions.rotated_nms import load_rotated_nms_extension
 import torch
+from pcod_common.torch_extensions.rotated_nms import load_rotated_nms_extension
 from torchvision.ops import nms
 
 _ROTATED_NMS_EXT = None
@@ -178,14 +178,15 @@ def apply_nms(
     use_rotated: bool = True,
     pre_nms_topk: int | None = None,
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Apply axis-aligned or rotated non-maximum suppression."""
     if boxes.numel() == 0:
         return boxes, scores, labels
 
     if boxes.ndim != 2 or boxes.size(1) < 7:
-        raise ValueError('boxes must have shape (N, 7+)')
+        raise ValueError("boxes must have shape (N, 7+)")
 
     if labels.numel() != scores.numel():
-        raise ValueError('labels and scores must have the same length')
+        raise ValueError("labels and scores must have the same length")
 
     keep_indices = []
     unique_labels = labels.unique()

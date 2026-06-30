@@ -14,6 +14,8 @@ from pcod_common.torch_extensions.pillar_cuda import pillar_preprocess
 
 @dataclass(frozen=True)
 class PillarPreprocessorConfig:
+    """Configuration for point-cloud pillar preprocessing."""
+
     x_min: float
     x_max: float
     y_min: float
@@ -34,6 +36,7 @@ class PillarPreprocessor(torch.nn.Module):
     """
 
     def __init__(self, cfg: PillarPreprocessorConfig) -> None:
+        """Initialize the preprocessor from a pillar configuration."""
         super().__init__()
         self.x_min = float(cfg.x_min)
         self.y_min = float(cfg.y_min)
@@ -120,9 +123,7 @@ class PillarPreprocessor(torch.nn.Module):
 
         pillar_ids = pillar_ids_raw
         valid_mask = pillar_ids >= 0
-        pillar_ids_safe = torch.where(
-            valid_mask, pillar_ids, torch.full_like(pillar_ids, sentinel_idx)
-        )
+        pillar_ids_safe = torch.where(valid_mask, pillar_ids, torch.full_like(pillar_ids, sentinel_idx))
 
         max_points_t = torch.tensor(max_points, device=device, dtype=dtype)
         point_count = point_count_raw.to(dtype).clamp(max=max_points_t)

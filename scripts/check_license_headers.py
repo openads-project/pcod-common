@@ -7,7 +7,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 COPYRIGHT = "Copyright Institute for Automotive Engineering (ika), RWTH Aachen University"
 SPDX = "SPDX-License-Identifier: Apache-2.0"
 COMMENT_PREFIXES = {
@@ -24,6 +23,7 @@ COMMENT_PREFIXES = {
 
 
 def tracked_source_files(repository: Path) -> list[Path]:
+    """Return source files tracked by Git or newly added to the repository."""
     result = subprocess.run(
         ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
         cwd=repository,
@@ -31,14 +31,11 @@ def tracked_source_files(repository: Path) -> list[Path]:
         capture_output=True,
     )
     paths = result.stdout.decode().split("\0")
-    return sorted(
-        repository / path
-        for path in paths
-        if path and Path(path).suffix in COMMENT_PREFIXES
-    )
+    return sorted(repository / path for path in paths if path and Path(path).suffix in COMMENT_PREFIXES)
 
 
 def main() -> int:
+    """Check every source file and report missing license headers."""
     repository = Path(__file__).resolve().parents[1]
     failures: list[str] = []
 

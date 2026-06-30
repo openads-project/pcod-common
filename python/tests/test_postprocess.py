@@ -7,18 +7,17 @@ import importlib.util
 
 import pytest
 
-HAS_TORCH = importlib.util.find_spec('torch') is not None
-HAS_TORCHVISION = importlib.util.find_spec('torchvision') is not None
+HAS_TORCH = importlib.util.find_spec("torch") is not None
+HAS_TORCHVISION = importlib.util.find_spec("torchvision") is not None
 pytestmark = pytest.mark.skipif(
     not (HAS_TORCH and HAS_TORCHVISION),
-    reason='postprocess tests require torch and torchvision',
+    reason="postprocess tests require torch and torchvision",
 )
 
 if HAS_TORCH and HAS_TORCHVISION:
-    import torch
-
-    from pcod_common.postprocess import apply_nms
     import pcod_common.postprocess as postprocess
+    import torch
+    from pcod_common.postprocess import apply_nms
 
 
 def _make_box(x: float, y: float, length: float = 1.0, width: float = 1.0, yaw: float = 0.0) -> list[float]:
@@ -26,6 +25,7 @@ def _make_box(x: float, y: float, length: float = 1.0, width: float = 1.0, yaw: 
 
 
 def test_apply_nms_empty_inputs():
+    """Return empty inputs unchanged."""
     boxes = torch.zeros((0, 7), dtype=torch.float32)
     scores = torch.zeros((0,), dtype=torch.float32)
     labels = torch.zeros((0,), dtype=torch.long)
@@ -46,7 +46,8 @@ def test_apply_nms_empty_inputs():
 
 
 def test_apply_nms_rejects_invalid_shapes():
-    with pytest.raises(ValueError, match='boxes must have shape'):
+    """Reject malformed postprocessing tensors."""
+    with pytest.raises(ValueError, match="boxes must have shape"):
         apply_nms(
             torch.zeros((3, 6), dtype=torch.float32),
             torch.ones((3,), dtype=torch.float32),
@@ -57,7 +58,7 @@ def test_apply_nms_rejects_invalid_shapes():
             use_rotated=False,
         )
 
-    with pytest.raises(ValueError, match='labels and scores must have the same length'):
+    with pytest.raises(ValueError, match="labels and scores must have the same length"):
         apply_nms(
             torch.zeros((3, 7), dtype=torch.float32),
             torch.ones((3,), dtype=torch.float32),
@@ -70,6 +71,7 @@ def test_apply_nms_rejects_invalid_shapes():
 
 
 def test_apply_nms_uses_per_class_thresholds():
+    """Apply score thresholds independently per class."""
     boxes = torch.tensor(
         [
             _make_box(0.0, 0.0),  # class 0 keep (0.6 >= 0.5)
@@ -98,9 +100,10 @@ def test_apply_nms_uses_per_class_thresholds():
 
 
 def test_apply_nms_global_topk_when_not_per_class_topk():
+    """Apply a global result limit when per-class top-k is disabled."""
     boxes = torch.tensor(
         [
-            _make_box(0.0, 0.0),   # class 0
+            _make_box(0.0, 0.0),  # class 0
             _make_box(10.0, 0.0),  # class 1
             _make_box(20.0, 0.0),  # class 1
         ],
@@ -126,9 +129,10 @@ def test_apply_nms_global_topk_when_not_per_class_topk():
 
 
 def test_apply_nms_per_class_topk_keeps_per_class_results():
+    """Keep limited results independently for each class."""
     boxes = torch.tensor(
         [
-            _make_box(0.0, 0.0),   # class 0
+            _make_box(0.0, 0.0),  # class 0
             _make_box(10.0, 0.0),  # class 1
         ],
         dtype=torch.float32,
@@ -153,16 +157,18 @@ def test_apply_nms_per_class_topk_keeps_per_class_results():
 
 
 def test_apply_nms_rotated_fails_fast_when_extension_fails(monkeypatch: pytest.MonkeyPatch):
-    def _raise_ext():
-        raise RuntimeError('extension unavailable')
+    """Propagate rotated-NMS extension loading failures."""
 
-    monkeypatch.setattr(postprocess, '_get_rotated_ext', _raise_ext)
+    def _raise_ext():
+        raise RuntimeError("extension unavailable")
+
+    monkeypatch.setattr(postprocess, "_get_rotated_ext", _raise_ext)
 
     boxes = torch.tensor([_make_box(0.0, 0.0), _make_box(0.1, 0.0)], dtype=torch.float32)
     scores = torch.tensor([0.9, 0.8], dtype=torch.float32)
     labels = torch.tensor([0, 0], dtype=torch.long)
 
-    with pytest.raises(RuntimeError, match='extension unavailable'):
+    with pytest.raises(RuntimeError, match="extension unavailable"):
         apply_nms(
             boxes,
             scores,

@@ -5,9 +5,9 @@
 #include <c10/cuda/CUDAMacros.h>
 #include <torch/extension.h>
 
+#include <cuda_runtime.h>
 #include <algorithm>
 #include <cmath>
-#include <cuda_runtime.h>
 
 namespace {
 
@@ -23,21 +23,13 @@ __device__ __forceinline__ Vec2 make_vec2(float x, float y) {
   return v;
 }
 
-__device__ __forceinline__ Vec2 operator+(const Vec2& a, const Vec2& b) {
-  return make_vec2(a.x + b.x, a.y + b.y);
-}
+__device__ __forceinline__ Vec2 operator+(const Vec2& a, const Vec2& b) { return make_vec2(a.x + b.x, a.y + b.y); }
 
-__device__ __forceinline__ Vec2 operator-(const Vec2& a, const Vec2& b) {
-  return make_vec2(a.x - b.x, a.y - b.y);
-}
+__device__ __forceinline__ Vec2 operator-(const Vec2& a, const Vec2& b) { return make_vec2(a.x - b.x, a.y - b.y); }
 
-__device__ __forceinline__ Vec2 operator*(const Vec2& a, float t) {
-  return make_vec2(a.x * t, a.y * t);
-}
+__device__ __forceinline__ Vec2 operator*(const Vec2& a, float t) { return make_vec2(a.x * t, a.y * t); }
 
-__device__ __forceinline__ float cross(const Vec2& a, const Vec2& b) {
-  return a.x * b.y - a.y * b.x;
-}
+__device__ __forceinline__ float cross(const Vec2& a, const Vec2& b) { return a.x * b.y - a.y * b.x; }
 
 __device__ __forceinline__ void box_to_corners(const float* box, Vec2 corners[4]) {
   // box: [x, y, z, l, w, h, yaw] (only BEV terms used)
@@ -60,15 +52,15 @@ __device__ __forceinline__ void box_to_corners(const float* box, Vec2 corners[4]
   // --- enforce CCW winding ---
   float area2 = 0.0f;
   for (int i = 0; i < 4; i++) {
-      const Vec2& p = corners[i];
-      const Vec2& q = corners[(i + 1) % 4];
-      area2 += p.x * q.y - p.y * q.x;
+    const Vec2& p = corners[i];
+    const Vec2& q = corners[(i + 1) % 4];
+    area2 += p.x * q.y - p.y * q.x;
   }
   if (area2 < 0.0f) {
-      // reverse order: swap 1<->3
-      Vec2 tmp = corners[1];
-      corners[1] = corners[3];
-      corners[3] = tmp;
+    // reverse order: swap 1<->3
+    Vec2 tmp = corners[1];
+    corners[1] = corners[3];
+    corners[3] = tmp;
   }
 }
 
@@ -86,11 +78,7 @@ __device__ __forceinline__ float polygon_area(const Vec2* poly, int n) {
 }
 
 __device__ __forceinline__ int clip_polygon(
-    const Vec2* subject,
-    int subject_size,
-    const Vec2& edge_start,
-    const Vec2& edge_end,
-    Vec2* output) {
+    const Vec2* subject, int subject_size, const Vec2& edge_start, const Vec2& edge_end, Vec2* output) {
   if (subject_size == 0) {
     return 0;
   }
@@ -175,14 +163,13 @@ __device__ __forceinline__ float oriented_iou_single(const float* box_a, const f
   return inter_area / uni;
 }
 
-__global__ void rotated_nms_cuda_kernel(
-    const float* boxes,
-    const int64_t* order,
-    bool* suppressed,
-    bool* selected,
-    int64_t num_boxes,
-    float iou_threshold,
-    int64_t max_output) {
+__global__ void rotated_nms_cuda_kernel(const float* boxes,
+                                        const int64_t* order,
+                                        bool* suppressed,
+                                        bool* selected,
+                                        int64_t num_boxes,
+                                        float iou_threshold,
+                                        int64_t max_output) {
   __shared__ int64_t kept;
   __shared__ int keep_current;
   __shared__ int stop;
@@ -262,14 +249,9 @@ torch::Tensor rotated_nms_cuda(torch::Tensor boxes, torch::Tensor scores, double
   const int threads = 512;
   const dim3 blocks(1);
   auto stream = at::cuda::getCurrentCUDAStream();
-  rotated_nms_cuda_kernel<<<blocks, threads, 0, stream>>>(
-      boxes_contig.data_ptr<float>(),
-      order.data_ptr<int64_t>(),
-      suppressed.data_ptr<bool>(),
-      selected.data_ptr<bool>(),
-      num_boxes,
-      static_cast<float>(iou_threshold),
-      max_out);
+  rotated_nms_cuda_kernel<<<blocks, threads, 0, stream>>>(boxes_contig.data_ptr<float>(), order.data_ptr<int64_t>(),
+                                                          suppressed.data_ptr<bool>(), selected.data_ptr<bool>(), num_boxes,
+                                                          static_cast<float>(iou_threshold), max_out);
   C10_CUDA_KERNEL_LAUNCH_CHECK();
 
   auto keep_positions = torch::nonzero(selected).flatten();
@@ -284,11 +266,7 @@ torch::Tensor rotated_nms_cuda(torch::Tensor boxes, torch::Tensor scores, double
   return keep;
 }
 
-__global__ void oriented_iou_aligned_kernel(
-    const float* boxes_a,
-    const float* boxes_b,
-    float* ious,
-    int64_t num_boxes) {
+__global__ void oriented_iou_aligned_kernel(const float* boxes_a, const float* boxes_b, float* ious, int64_t num_boxes) {
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= num_boxes) {
     return;
@@ -315,8 +293,8 @@ torch::Tensor oriented_iou_aligned_cuda(torch::Tensor boxes_a, torch::Tensor box
   const int threads = 256;
   const int blocks = (N + threads - 1) / threads;
   auto stream = at::cuda::getCurrentCUDAStream();
-  oriented_iou_aligned_kernel<<<blocks, threads, 0, stream>>>(
-      boxes_a_c.data_ptr<float>(), boxes_b_c.data_ptr<float>(), out.data_ptr<float>(), N);
+  oriented_iou_aligned_kernel<<<blocks, threads, 0, stream>>>(boxes_a_c.data_ptr<float>(), boxes_b_c.data_ptr<float>(),
+                                                              out.data_ptr<float>(), N);
   C10_CUDA_KERNEL_LAUNCH_CHECK();
   return out;
 }
