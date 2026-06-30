@@ -10,7 +10,10 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
 authors = [
-  { name = "Institute for Automotive Engineering (ika), RWTH Aachen University", email = "opensource@ika.rwth-aachen.de" }
+  { name = "Bastian Lampe", email = "bastian.lampe@rwth-aachen.de" }
+]
+maintainers = [
+  { name = "Bastian Lampe", email = "bastian.lampe@rwth-aachen.de" }
 ]
 classifiers = [
   "Development Status :: 3 - Alpha",
