@@ -1,3 +1,6 @@
+# Copyright Institute for Automotive Engineering (ika), RWTH Aachen University
+# SPDX-License-Identifier: Apache-2.0
+
 """Utilities to convert raw point clouds into PBOD pillar tensors."""
 
 from __future__ import annotations

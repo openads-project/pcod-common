@@ -1,3 +1,6 @@
+# Copyright Institute for Automotive Engineering (ika), RWTH Aachen University
+# SPDX-License-Identifier: Apache-2.0
+
 """Postprocessing utilities (NMS, IoU helpers)."""
 
 from __future__ import annotations

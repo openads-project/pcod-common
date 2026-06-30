@@ -1,3 +1,6 @@
+// Copyright Institute for Automotive Engineering (ika), RWTH Aachen University
+// SPDX-License-Identifier: Apache-2.0
+
 #include "pcod_common/pbod_postprocess.hpp"
 #include "pcod_common/pillar_grid.hpp"
 #include "pcod_common/point_preprocess.hpp"

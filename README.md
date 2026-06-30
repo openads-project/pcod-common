@@ -164,3 +164,7 @@ The C++ implementation parses YAML via `yaml-cpp` rather than a custom YAML subs
 
 - Training repo should include pcod-common as a submodule and add it to the Python environment (e.g., `pip install -e pcod-common`).
 - ROS repo should include pcod-common as a submodule and link against the C++ library.
+
+## Licensing
+
+The source code in this repository is licensed under Apache-2.0, see [LICENSE](LICENSE).

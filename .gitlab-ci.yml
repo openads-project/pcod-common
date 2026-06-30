@@ -1,6 +1,13 @@
 stages:
+  - checks
   - build
   - test
+
+license:headers:
+  stage: checks
+  image: python:3.12-bookworm
+  script:
+    - python3 scripts/check_license_headers.py
 
 build:cmake:
   stage: build

@@ -1,3 +1,6 @@
+// Copyright Institute for Automotive Engineering (ika), RWTH Aachen University
+// SPDX-License-Identifier: Apache-2.0
+
 #include "pcod_common/point_preprocess.hpp"
 
 #include <stdexcept>

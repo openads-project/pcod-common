@@ -1,3 +1,6 @@
+// Copyright Institute for Automotive Engineering (ika), RWTH Aachen University
+// SPDX-License-Identifier: Apache-2.0
+
 #include <ATen/cuda/CUDAContext.h>
 #include <c10/cuda/CUDAMacros.h>
 #include <torch/extension.h>

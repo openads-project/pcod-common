@@ -1,3 +1,6 @@
+# Copyright Institute for Automotive Engineering (ika), RWTH Aachen University
+# SPDX-License-Identifier: Apache-2.0
+
 """C++/CUDA rotated NMS extension loader.
 
 Always attempts to import or build the extension; raises on failure.

@@ -1,3 +1,6 @@
+// Copyright Institute for Automotive Engineering (ika), RWTH Aachen University
+// SPDX-License-Identifier: Apache-2.0
+
 #include "pcod_common/model_manifest.hpp"
 #include "pcod_common/nms.hpp"
 #include "pcod_common/version.hpp"
