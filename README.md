@@ -1,6 +1,6 @@
 # pcod-common
 
-Shared preprocessing and postprocessing library for Point Cloud Object Detection.
+**Shared Preprocessing and Postprocessing Library for Point Cloud Object Detection.**
 
 This repo is the common runtime layer used by both the training/export pipeline and the ROS inference node.
 It centralizes geometry math, decoding, NMS, and manifest parsing so those two repos stay aligned.
@@ -190,7 +190,7 @@ The manifest is split into three sections:
 ROS inference treats `frozen_contract` as mandatory source-of-truth model configuration and uses `runtime_defaults` as the initial values for overridable ROS parameters such as `preprocessing.point_feature.value_threshold` and NMS thresholds.
 The schema lives in `schemas/model_manifest.schema.json`.
 Both the Python and C++ loaders validate the same canonical structure, reject unsupported keys, and require bundle-relative file references.
-The C++ implementation parses YAML via `yaml-cpp` rather than a custom YAML subset parser.
+The C++ implementation parses YAML via `yaml-cpp`.
 
 ## Integration Notes
 
