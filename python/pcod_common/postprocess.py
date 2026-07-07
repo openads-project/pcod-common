@@ -80,8 +80,8 @@ def _clip_polygon_torch(subject: torch.Tensor, edge_start: torch.Tensor, edge_en
         prev = subject[i - 1]
         cross_curr = edge[0] * (curr - edge_start)[1] - edge[1] * (curr - edge_start)[0]
         cross_prev = edge[0] * (prev - edge_start)[1] - edge[1] * (prev - edge_start)[0]
-        inside_curr = cross_curr <= 0
-        inside_prev = cross_prev <= 0
+        inside_curr = cross_curr >= 0
+        inside_prev = cross_prev >= 0
         if inside_curr and inside_prev:
             output.append(curr)
         elif inside_prev and not inside_curr:
@@ -182,8 +182,8 @@ def apply_nms(
     if boxes.numel() == 0:
         return boxes, scores, labels
 
-    if boxes.ndim != 2 or boxes.size(1) < 7:
-        raise ValueError("boxes must have shape (N, 7+)")
+    if boxes.ndim != 2 or boxes.size(1) != 7:
+        raise ValueError("boxes must have shape (N, 7)")
 
     if labels.numel() != scores.numel():
         raise ValueError("labels and scores must have the same length")
