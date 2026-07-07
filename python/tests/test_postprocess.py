@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import importlib.util
+import math
 
 import pytest
 
@@ -22,6 +23,90 @@ if HAS_TORCH and HAS_TORCHVISION:
 
 def _make_box(x: float, y: float, length: float = 1.0, width: float = 1.0, yaw: float = 0.0) -> list[float]:
     return [x, y, 0.0, length, width, 1.0, yaw]
+
+
+ROTATED_NMS_CASES = [
+    pytest.param(
+        [_make_box(0.0, 0.0, 4.0, 2.0), _make_box(0.0, 0.0, 4.0, 2.0)],
+        [0.9, 0.8],
+        0.1,
+        10,
+        [0],
+        id="identical",
+    ),
+    pytest.param(
+        [_make_box(0.0, 0.0, 4.0, 2.0), _make_box(0.5, 0.0, 4.0, 2.0)],
+        [0.9, 0.8],
+        0.1,
+        10,
+        [0],
+        id="axis_aligned_high_overlap",
+    ),
+    pytest.param(
+        [_make_box(0.0, 0.0, 4.0, 2.0), _make_box(3.5, 0.0, 4.0, 2.0)],
+        [0.9, 0.8],
+        0.1,
+        10,
+        [0, 1],
+        id="axis_aligned_low_overlap",
+    ),
+    pytest.param(
+        [_make_box(0.0, 0.0, 4.0, 2.0), _make_box(4.0, 0.0, 4.0, 2.0)],
+        [0.9, 0.8],
+        0.0,
+        10,
+        [0, 1],
+        id="touching_edges",
+    ),
+    pytest.param(
+        [_make_box(0.0, 0.0, 6.0, 4.0), _make_box(0.0, 0.0, 2.0, 1.0)],
+        [0.9, 0.8],
+        0.05,
+        10,
+        [0],
+        id="contained_box",
+    ),
+    pytest.param(
+        [_make_box(0.0, 0.0, 4.0, 2.0, math.pi / 4.0), _make_box(0.2, 0.1, 4.0, 2.0, math.pi / 4.0)],
+        [0.9, 0.8],
+        0.1,
+        10,
+        [0],
+        id="rotated_same_yaw",
+    ),
+    pytest.param(
+        [_make_box(0.0, 0.0, 4.0, 2.0, math.pi / 4.0), _make_box(0.0, 0.0, 4.0, 2.0, -math.pi / 4.0)],
+        [0.9, 0.8],
+        0.1,
+        10,
+        [0],
+        id="rotated_crossing",
+    ),
+    pytest.param(
+        [_make_box(0.0, 0.0, 4.0, 2.0, math.pi / 4.0), _make_box(4.0, 4.0, 4.0, 2.0, math.pi / 4.0)],
+        [0.9, 0.8],
+        0.1,
+        10,
+        [0, 1],
+        id="rotated_separated",
+    ),
+    pytest.param(
+        [_make_box(0.0, 0.0, 4.0, 2.0), _make_box(0.5, 0.0, 4.0, 2.0), _make_box(8.0, 0.0, 4.0, 2.0)],
+        [0.8, 0.95, 0.7],
+        0.1,
+        10,
+        [1, 2],
+        id="higher_score_second_suppresses_first",
+    ),
+    pytest.param(
+        [_make_box(0.0, 0.0, 4.0, 2.0), _make_box(8.0, 0.0, 4.0, 2.0), _make_box(16.0, 0.0, 4.0, 2.0)],
+        [0.9, 0.8, 0.7],
+        0.1,
+        2,
+        [0, 1],
+        id="max_output_limit",
+    ),
+]
 
 
 def test_apply_nms_empty_inputs():
@@ -50,6 +135,17 @@ def test_apply_nms_rejects_invalid_shapes():
     with pytest.raises(ValueError, match="boxes must have shape"):
         apply_nms(
             torch.zeros((3, 6), dtype=torch.float32),
+            torch.ones((3,), dtype=torch.float32),
+            torch.zeros((3,), dtype=torch.long),
+            score_thresholds=[0.1],
+            iou_threshold=0.1,
+            max_num_objects=10,
+            use_rotated=False,
+        )
+
+    with pytest.raises(ValueError, match="boxes must have shape"):
+        apply_nms(
+            torch.zeros((3, 8), dtype=torch.float32),
             torch.ones((3,), dtype=torch.float32),
             torch.zeros((3,), dtype=torch.long),
             score_thresholds=[0.1],
@@ -154,6 +250,150 @@ def test_apply_nms_per_class_topk_keeps_per_class_results():
     assert out_boxes.shape[0] == 2
     assert sorted(out_labels.tolist()) == [0, 1]
     assert sorted([round(float(v), 3) for v in out_scores.tolist()]) == [0.7, 0.8]
+
+
+def test_rotated_torch_iou_reports_identical_boxes_as_full_overlap():
+    """Compute non-zero IoU for CCW rotated boxes in the pure torch fallback."""
+    box = torch.tensor(_make_box(0.0, 0.0, length=4.0, width=2.0), dtype=torch.float32)
+
+    iou = postprocess._oriented_iou_torch(box, box)
+
+    assert float(iou) == pytest.approx(1.0)
+
+
+def test_rotated_torch_nms_suppresses_overlapping_boxes():
+    """Suppress a lower-scored rotated box when IoU exceeds the threshold."""
+    boxes = torch.tensor(
+        [
+            _make_box(0.0, 0.0, length=4.0, width=2.0),
+            _make_box(0.5, 0.0, length=4.0, width=2.0),
+        ],
+        dtype=torch.float32,
+    )
+    scores = torch.tensor([0.9, 0.8], dtype=torch.float32)
+
+    keep = postprocess._nms_rotated_torch(boxes, scores, iou_threshold=0.1, max_num_objects=10)
+
+    assert keep.tolist() == [0]
+
+
+@pytest.mark.parametrize(("boxes_values", "scores_values", "iou_threshold", "max_num_objects", "expected"), ROTATED_NMS_CASES)
+def test_rotated_torch_nms_cases_match_expected(
+    boxes_values: list[list[float]],
+    scores_values: list[float],
+    iou_threshold: float,
+    max_num_objects: int,
+    expected: list[int],
+):
+    """Cover representative rotated NMS geometry and ordering cases."""
+    boxes = torch.tensor(boxes_values, dtype=torch.float32)
+    scores = torch.tensor(scores_values, dtype=torch.float32)
+
+    keep = postprocess._nms_rotated_torch(boxes, scores, iou_threshold, max_num_objects)
+
+    assert keep.tolist() == expected
+
+
+@pytest.mark.parametrize(("boxes_values", "scores_values", "iou_threshold", "max_num_objects", "expected"), ROTATED_NMS_CASES)
+def test_rotated_extension_cpu_nms_cases_match_torch_and_expected(
+    boxes_values: list[list[float]],
+    scores_values: list[float],
+    iou_threshold: float,
+    max_num_objects: int,
+    expected: list[int],
+):
+    """Keep CPU extension NMS in parity with the pure torch fallback."""
+    boxes = torch.tensor(boxes_values, dtype=torch.float32)
+    scores = torch.tensor(scores_values, dtype=torch.float32)
+    expected_tensor = postprocess._nms_rotated_torch(boxes, scores, iou_threshold, max_num_objects)
+
+    try:
+        ext = postprocess._get_rotated_ext()
+    except Exception as exc:  # pragma: no cover - environment-dependent extension toolchain
+        pytest.skip(f"rotated NMS extension unavailable: {exc}")
+
+    keep = ext.rotated_nms(boxes, scores, iou_threshold, max_num_objects)
+
+    assert expected_tensor.tolist() == expected
+    assert keep.cpu().tolist() == expected
+
+
+@pytest.mark.parametrize(("boxes_values", "scores_values", "iou_threshold", "max_num_objects", "expected"), ROTATED_NMS_CASES)
+def test_rotated_extension_cuda_nms_cases_match_cpu_and_expected(
+    boxes_values: list[list[float]],
+    scores_values: list[float],
+    iou_threshold: float,
+    max_num_objects: int,
+    expected: list[int],
+):
+    """Keep CUDA extension NMS in parity with the CPU extension when CUDA is available."""
+    if not torch.cuda.is_available():
+        pytest.skip("CUDA is not available to torch")
+
+    try:
+        ext = postprocess._get_rotated_ext()
+    except Exception as exc:  # pragma: no cover - environment-dependent extension toolchain
+        pytest.skip(f"rotated NMS extension unavailable: {exc}")
+    if not hasattr(ext, "rotated_nms_cuda"):
+        pytest.skip("rotated NMS extension has no CUDA entrypoint")
+
+    boxes_cpu = torch.tensor(boxes_values, dtype=torch.float32)
+    scores_cpu = torch.tensor(scores_values, dtype=torch.float32)
+    cpu_keep = ext.rotated_nms(boxes_cpu, scores_cpu, iou_threshold, max_num_objects)
+    cuda_keep = ext.rotated_nms_cuda(
+        boxes_cpu.cuda(),
+        scores_cpu.cuda(),
+        iou_threshold,
+        max_num_objects,
+    )
+
+    assert cpu_keep.cpu().tolist() == expected
+    assert cuda_keep.cpu().tolist() == expected
+
+
+def test_rotated_extension_cpu_rejects_extra_box_columns():
+    """Reject wider tensors instead of silently ignoring extra columns."""
+    try:
+        ext = postprocess._get_rotated_ext()
+    except Exception as exc:  # pragma: no cover - environment-dependent extension toolchain
+        pytest.skip(f"rotated NMS extension unavailable: {exc}")
+
+    boxes = torch.tensor(
+        [
+            _make_box(0.0, 0.0, length=4.0, width=2.0) + [100.0],
+            _make_box(0.5, 0.0, length=4.0, width=2.0) + [200.0],
+        ],
+        dtype=torch.float32,
+    )
+    scores = torch.tensor([0.9, 0.8], dtype=torch.float32)
+
+    with pytest.raises(RuntimeError, match=r"boxes must be \[N,7\]"):
+        ext.rotated_nms(boxes, scores, 0.1, 10)
+
+
+def test_rotated_extension_cuda_rejects_extra_box_columns():
+    """Reject wider tensors in the CUDA entrypoint too."""
+    if not torch.cuda.is_available():
+        pytest.skip("CUDA is not available to torch")
+
+    try:
+        ext = postprocess._get_rotated_ext()
+    except Exception as exc:  # pragma: no cover - environment-dependent extension toolchain
+        pytest.skip(f"rotated NMS extension unavailable: {exc}")
+    if not hasattr(ext, "rotated_nms_cuda"):
+        pytest.skip("rotated NMS extension has no CUDA entrypoint")
+
+    boxes = torch.tensor(
+        [
+            _make_box(0.0, 0.0, length=4.0, width=2.0) + [100.0],
+            _make_box(0.5, 0.0, length=4.0, width=2.0) + [200.0],
+        ],
+        dtype=torch.float32,
+    )
+    scores = torch.tensor([0.9, 0.8], dtype=torch.float32)
+
+    with pytest.raises(RuntimeError, match=r"boxes must be \[N,7\]"):
+        ext.rotated_nms_cuda(boxes.cuda(), scores.cuda(), 0.1, 10)
 
 
 def test_apply_nms_rotated_fails_fast_when_extension_fails(monkeypatch: pytest.MonkeyPatch):

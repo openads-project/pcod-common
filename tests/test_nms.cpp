@@ -5,6 +5,47 @@
 
 #include <cassert>
 #include <cmath>
+#include <vector>
+
+namespace {
+
+pcod_common::BoundingBox MakeBox(std::size_t idx,
+                                 float x,
+                                 float y,
+                                 float length,
+                                 float width,
+                                 float yaw,
+                                 float score) {
+  pcod_common::BoundingBox box;
+  box.center = {x, y};
+  box.z = static_cast<float>(idx);
+  box.length = length;
+  box.width = width;
+  box.height = 1.0f;
+  box.yaw = yaw;
+  box.existence_probability = score;
+  box.classification.push_back({0, 1.0f});
+  return box;
+}
+
+void RunNmsCase(std::vector<pcod_common::BoundingBox> boxes,
+                float iou_threshold,
+                int max_detections,
+                const std::vector<std::size_t>& expected_indices) {
+  pcod_common::NmsConfig config;
+  config.score_thresholds = {0.1f};
+  config.iou_threshold = iou_threshold;
+  config.max_detections = max_detections;
+
+  pcod_common::ApplyRotatedNms(boxes, config);
+
+  assert(boxes.size() == expected_indices.size());
+  for (std::size_t i = 0; i < expected_indices.size(); ++i) {
+    assert(static_cast<std::size_t>(std::lround(boxes[i].z)) == expected_indices[i]);
+  }
+}
+
+}  // namespace
 
 int main() {
   {
@@ -24,10 +65,86 @@ int main() {
     pcod_common::NmsConfig config;
     config.score_thresholds = {0.1f};
     config.iou_threshold = 0.1f;
-    config.max_detections = 1;
+    config.max_detections = 10;
 
     pcod_common::ApplyRotatedNms(boxes, config);
     assert(boxes.size() == 1);
+    assert(std::abs(boxes[0].center[0]) < 1e-6f);
+    assert(std::abs(boxes[0].center[1]) < 1e-6f);
+  }
+
+  {
+    RunNmsCase(
+        {
+            MakeBox(0, 0.0f, 0.0f, 4.0f, 2.0f, 0.0f, 0.9f),
+            MakeBox(1, 0.0f, 0.0f, 4.0f, 2.0f, 0.0f, 0.8f),
+        },
+        0.1f, 10, {0});
+
+    RunNmsCase(
+        {
+            MakeBox(0, 0.0f, 0.0f, 4.0f, 2.0f, 0.0f, 0.9f),
+            MakeBox(1, 0.5f, 0.0f, 4.0f, 2.0f, 0.0f, 0.8f),
+        },
+        0.1f, 10, {0});
+
+    RunNmsCase(
+        {
+            MakeBox(0, 0.0f, 0.0f, 4.0f, 2.0f, 0.0f, 0.9f),
+            MakeBox(1, 3.5f, 0.0f, 4.0f, 2.0f, 0.0f, 0.8f),
+        },
+        0.1f, 10, {0, 1});
+
+    RunNmsCase(
+        {
+            MakeBox(0, 0.0f, 0.0f, 4.0f, 2.0f, 0.0f, 0.9f),
+            MakeBox(1, 4.0f, 0.0f, 4.0f, 2.0f, 0.0f, 0.8f),
+        },
+        0.0f, 10, {0, 1});
+
+    RunNmsCase(
+        {
+            MakeBox(0, 0.0f, 0.0f, 6.0f, 4.0f, 0.0f, 0.9f),
+            MakeBox(1, 0.0f, 0.0f, 2.0f, 1.0f, 0.0f, 0.8f),
+        },
+        0.05f, 10, {0});
+
+    RunNmsCase(
+        {
+            MakeBox(0, 0.0f, 0.0f, 4.0f, 2.0f, static_cast<float>(M_PI / 4.0), 0.9f),
+            MakeBox(1, 0.2f, 0.1f, 4.0f, 2.0f, static_cast<float>(M_PI / 4.0), 0.8f),
+        },
+        0.1f, 10, {0});
+
+    RunNmsCase(
+        {
+            MakeBox(0, 0.0f, 0.0f, 4.0f, 2.0f, static_cast<float>(M_PI / 4.0), 0.9f),
+            MakeBox(1, 0.0f, 0.0f, 4.0f, 2.0f, static_cast<float>(-M_PI / 4.0), 0.8f),
+        },
+        0.1f, 10, {0});
+
+    RunNmsCase(
+        {
+            MakeBox(0, 0.0f, 0.0f, 4.0f, 2.0f, static_cast<float>(M_PI / 4.0), 0.9f),
+            MakeBox(1, 4.0f, 4.0f, 4.0f, 2.0f, static_cast<float>(M_PI / 4.0), 0.8f),
+        },
+        0.1f, 10, {0, 1});
+
+    RunNmsCase(
+        {
+            MakeBox(0, 0.0f, 0.0f, 4.0f, 2.0f, 0.0f, 0.8f),
+            MakeBox(1, 0.5f, 0.0f, 4.0f, 2.0f, 0.0f, 0.95f),
+            MakeBox(2, 8.0f, 0.0f, 4.0f, 2.0f, 0.0f, 0.7f),
+        },
+        0.1f, 10, {1, 2});
+
+    RunNmsCase(
+        {
+            MakeBox(0, 0.0f, 0.0f, 4.0f, 2.0f, 0.0f, 0.9f),
+            MakeBox(1, 8.0f, 0.0f, 4.0f, 2.0f, 0.0f, 0.8f),
+            MakeBox(2, 16.0f, 0.0f, 4.0f, 2.0f, 0.0f, 0.7f),
+        },
+        0.1f, 2, {0, 1});
   }
 
   {
