@@ -225,7 +225,7 @@ __global__ void rotated_nms_cuda_kernel(const float* boxes,
 torch::Tensor rotated_nms_cuda(torch::Tensor boxes, torch::Tensor scores, double iou_threshold, int64_t max_out) {
   TORCH_CHECK(boxes.is_cuda(), "rotated_nms_cuda expects CUDA input for boxes");
   TORCH_CHECK(scores.is_cuda(), "rotated_nms_cuda expects CUDA input for scores");
-  TORCH_CHECK(boxes.dim() == 2 && boxes.size(1) >= 7, "boxes must be [N,7]");
+  TORCH_CHECK(boxes.dim() == 2 && boxes.size(1) == 7, "boxes must be [N,7]");
   TORCH_CHECK(scores.dim() == 1 && scores.size(0) == boxes.size(0), "scores must be [N]");
 
   auto boxes_contig = boxes.contiguous();
@@ -279,7 +279,7 @@ __global__ void oriented_iou_aligned_kernel(const float* boxes_a, const float* b
 torch::Tensor oriented_iou_aligned_cuda(torch::Tensor boxes_a, torch::Tensor boxes_b) {
   TORCH_CHECK(boxes_a.is_cuda() && boxes_b.is_cuda(), "oriented_iou_aligned_cuda expects CUDA inputs");
   TORCH_CHECK(boxes_a.sizes() == boxes_b.sizes(), "boxes_a and boxes_b must have the same shape");
-  TORCH_CHECK(boxes_a.dim() == 2 && boxes_a.size(1) >= 7, "boxes must be [N,7]");
+  TORCH_CHECK(boxes_a.dim() == 2 && boxes_a.size(1) == 7, "boxes must be [N,7]");
   auto boxes_a_c = boxes_a.contiguous();
   auto boxes_b_c = boxes_b.contiguous();
   if (boxes_a_c.scalar_type() != torch::kFloat) {

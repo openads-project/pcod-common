@@ -139,7 +139,7 @@ float oriented_iou(const at::Tensor& box_a, const at::Tensor& box_b) {
 
 // boxes: [N,7], scores: [N], return indices to keep
 torch::Tensor rotated_nms(torch::Tensor boxes, torch::Tensor scores, double iou_threshold, int64_t max_out) {
-  TORCH_CHECK(boxes.dim() == 2 && boxes.size(1) >= 7, "boxes must be [N,7]");
+  TORCH_CHECK(boxes.dim() == 2 && boxes.size(1) == 7, "boxes must be [N,7]");
   TORCH_CHECK(scores.dim() == 1 && scores.size(0) == boxes.size(0), "scores must be [N]");
 
   auto boxes_cpu = boxes.contiguous().to(torch::kCPU);
@@ -172,8 +172,8 @@ torch::Tensor rotated_nms(torch::Tensor boxes, torch::Tensor scores, double iou_
 }
 
 torch::Tensor oriented_iou_aligned(torch::Tensor boxes_a, torch::Tensor boxes_b) {
-  TORCH_CHECK(boxes_a.dim() == 2 && boxes_a.size(1) >= 7, "boxes_a must be [N,7]");
-  TORCH_CHECK(boxes_b.dim() == 2 && boxes_b.size(1) >= 7, "boxes_b must be [N,7]");
+  TORCH_CHECK(boxes_a.dim() == 2 && boxes_a.size(1) == 7, "boxes_a must be [N,7]");
+  TORCH_CHECK(boxes_b.dim() == 2 && boxes_b.size(1) == 7, "boxes_b must be [N,7]");
   TORCH_CHECK(boxes_a.sizes() == boxes_b.sizes(), "boxes_a and boxes_b must have the same shape");
   auto boxes_a_c = boxes_a.contiguous().to(torch::kCPU);
   auto boxes_b_c = boxes_b.contiguous().to(torch::kCPU);
