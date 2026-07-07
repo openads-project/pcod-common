@@ -9,13 +9,7 @@
 
 namespace {
 
-pcod_common::BoundingBox MakeBox(std::size_t idx,
-                                 float x,
-                                 float y,
-                                 float length,
-                                 float width,
-                                 float yaw,
-                                 float score) {
+pcod_common::BoundingBox MakeBox(std::size_t idx, float x, float y, float length, float width, float yaw, float score) {
   pcod_common::BoundingBox box;
   box.center = {x, y};
   box.z = static_cast<float>(idx);
