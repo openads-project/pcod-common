@@ -17,26 +17,36 @@ PillarPreprocessCudaContext::PillarPreprocessCudaContext(PillarPreprocessCudaCon
 
 PillarPreprocessCudaContext& PillarPreprocessCudaContext::operator=(PillarPreprocessCudaContext&&) noexcept = default;
 
-bool PillarPreprocessCudaContext::isAvailable() const { return false; }
+bool PillarPreprocessCudaContext::isAvailable() const { return impl_ != nullptr && HasCudaPillarPreprocessSupport(); }
 
-bool PillarPreprocessCudaContext::run(const PillarPreprocessPoint*,
-                                      std::int32_t,
-                                      const PillarPreprocessCudaConfig&,
-                                      const PillarPreprocessCudaOutputs&,
+bool PillarPreprocessCudaContext::run(const PillarPreprocessPoint* points,
+                                      std::int32_t num_points,
+                                      const PillarPreprocessCudaConfig& config,
+                                      const PillarPreprocessCudaOutputs& outputs,
                                       std::string* error_message) {
+  (void)points;
+  (void)num_points;
+  (void)config;
+  (void)outputs;
   if (error_message != nullptr) {
-    *error_message = "CUDA preprocessing is not available in this build";
+    *error_message =
+        impl_ == nullptr ? "CUDA preprocessing context is not initialized" : "CUDA preprocessing is not available in this build";
   }
   return false;
 }
 
-bool PillarPreprocessCudaContext::runToDevice(const PillarPreprocessPoint*,
-                                              std::int32_t,
-                                              const PillarPreprocessCudaConfig&,
-                                              const PillarPreprocessCudaDeviceOutputs&,
+bool PillarPreprocessCudaContext::runToDevice(const PillarPreprocessPoint* points,
+                                              std::int32_t num_points,
+                                              const PillarPreprocessCudaConfig& config,
+                                              const PillarPreprocessCudaDeviceOutputs& outputs,
                                               std::string* error_message) {
+  (void)points;
+  (void)num_points;
+  (void)config;
+  (void)outputs;
   if (error_message != nullptr) {
-    *error_message = "CUDA preprocessing is not available in this build";
+    *error_message =
+        impl_ == nullptr ? "CUDA preprocessing context is not initialized" : "CUDA preprocessing is not available in this build";
   }
   return false;
 }
