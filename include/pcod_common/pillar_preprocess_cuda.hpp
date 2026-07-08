@@ -71,7 +71,9 @@ class PillarPreprocessCudaContext {
   /** Release all owned CUDA resources. */
   ~PillarPreprocessCudaContext();
 
+  /** Copy construction is disabled because the context owns backend resources. */
   PillarPreprocessCudaContext(const PillarPreprocessCudaContext&) = delete;
+  /** Copy assignment is disabled because the context owns backend resources. */
   PillarPreprocessCudaContext& operator=(const PillarPreprocessCudaContext&) = delete;
   /** @param other Context whose resources are transferred. */
   PillarPreprocessCudaContext(PillarPreprocessCudaContext&& other) noexcept;

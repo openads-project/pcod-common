@@ -11,8 +11,8 @@ MARKDOWN_SUPPORT       = YES
 AUTOLINK_SUPPORT       = YES
 BUILTIN_STL_SUPPORT    = YES
 
-INPUT                  = README.md include/pcod_common
-FILE_PATTERNS          = *.md *.hpp
+INPUT                  = README.md include/pcod_common src tests
+FILE_PATTERNS          = *.md *.hpp *.cpp
 RECURSIVE              = YES
 USE_MDFILE_AS_MAINPAGE = README.md
 

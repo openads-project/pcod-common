@@ -17,11 +17,16 @@
 
 namespace {
 
+/** Captured result of a shell command used by contract tests. */
 struct CommandResult {
-  int exit_code = -1;
-  std::string stdout_text;
+  int exit_code = -1;       ///< Process exit code returned by pclose.
+  std::string stdout_text;  ///< Captured stdout text.
 };
 
+/** Trim leading and trailing whitespace.
+ * @param value Input text.
+ * @return Trimmed text.
+ */
 std::string Trim(const std::string& value) {
   std::size_t first = 0;
   while (first < value.size() && std::isspace(static_cast<unsigned char>(value[first]))) {
@@ -34,6 +39,10 @@ std::string Trim(const std::string& value) {
   return value.substr(first, last - first);
 }
 
+/** Run a shell command and capture stdout.
+ * @param command Command line passed to the shell.
+ * @return Exit code and captured stdout.
+ */
 CommandResult RunCommandCapture(const std::string& command) {
   CommandResult result;
   FILE* pipe = popen(command.c_str(), "r");
@@ -48,6 +57,10 @@ CommandResult RunCommandCapture(const std::string& command) {
   return result;
 }
 
+/** Split text into trimmed lines.
+ * @param text Input text.
+ * @return Trimmed lines.
+ */
 std::vector<std::string> SplitLines(const std::string& text) {
   std::vector<std::string> lines;
   std::stringstream ss(text);
@@ -58,6 +71,10 @@ std::vector<std::string> SplitLines(const std::string& text) {
   return lines;
 }
 
+/** Parse comma-separated floats.
+ * @param csv Comma-separated scalar values.
+ * @return Parsed float values.
+ */
 std::vector<float> ParseCsvFloats(const std::string& csv) {
   std::vector<float> out;
   std::stringstream ss(csv);
@@ -71,6 +88,10 @@ std::vector<float> ParseCsvFloats(const std::string& csv) {
   return out;
 }
 
+/** Write a manifest fixture with configurable score-threshold syntax.
+ * @param path Destination YAML path.
+ * @param score_threshold_value YAML value to write for the score threshold.
+ */
 void WriteManifestWithScoreThreshold(const std::string& path, const std::string& score_threshold_value) {
   std::ofstream out(path);
   out << "schema_version: '2.0'\n";
@@ -135,6 +156,7 @@ void WriteManifestWithScoreThreshold(const std::string& path, const std::string&
 
 }  // namespace
 
+/** Run C++ and Python contract parity checks. */
 int main() {
   const std::string python_dir = PCOD_COMMON_PYTHON_DIR;
   const std::string py_prefix = "PYTHONPATH='" + python_dir + "' python3 -c \"";

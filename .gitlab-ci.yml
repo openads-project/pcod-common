@@ -28,6 +28,16 @@ format:cpp:
   script:
     - clang-format-18 --dry-run --Werror $(find csrc include src tests -type f \( -name '*.cpp' -o -name '*.cu' -o -name '*.hpp' \))
 
+doxygen:docs:
+  stage: checks
+  image: ubuntu:24.04
+  before_script:
+    - apt-get update
+    - apt-get install -y ca-certificates doxygen git graphviz
+    - git clone --depth 1 --branch v2.4.1 https://github.com/jothepro/doxygen-awesome-css.git doxygen-awesome-css
+  script:
+    - doxygen Doxyfile
+
 build:gcc:
   stage: build
   image: ubuntu:24.04

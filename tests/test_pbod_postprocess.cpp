@@ -9,6 +9,7 @@
 
 #include "pcod_common/pillar_grid.hpp"
 
+/** Run PBOD decoder regression checks. */
 int main() {
   {
     pcod_common::PillarGrid grid = pcod_common::BuildPillarGrid({1, 1}, {{{0.0F, 1.0F}, {0.0F, 1.0F}, {0.0F, 1.0F}}}, 1, 1);

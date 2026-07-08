@@ -8,6 +8,7 @@
 #include <cassert>
 #include <vector>
 
+/** Run the README example as an executable regression check. */
 int main() {
   pcod_common::PointPreprocessConfig pre_cfg;
   pre_cfg.x_min = -1.0f;

@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <string>
 
+/** Run manifest parsing and unknown-key validation checks. */
 int main() {
   const std::string path = "./test_manifest.yml";
   std::ofstream out(path);

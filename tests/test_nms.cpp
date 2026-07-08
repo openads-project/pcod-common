@@ -9,6 +9,16 @@
 
 namespace {
 
+/** Build a scored bounding box whose z coordinate stores the test index.
+ * @param idx Test index stored in the box z coordinate.
+ * @param x Box center X.
+ * @param y Box center Y.
+ * @param length Box length.
+ * @param width Box width.
+ * @param yaw Box heading.
+ * @param score Detection score.
+ * @return Configured bounding box.
+ */
 pcod_common::BoundingBox MakeBox(std::size_t idx, float x, float y, float length, float width, float yaw, float score) {
   pcod_common::BoundingBox box;
   box.center = {x, y};
@@ -22,6 +32,12 @@ pcod_common::BoundingBox MakeBox(std::size_t idx, float x, float y, float length
   return box;
 }
 
+/** Run one NMS scenario and compare retained box indices.
+ * @param boxes Candidate boxes.
+ * @param iou_threshold Suppression IoU threshold.
+ * @param max_detections Maximum retained detections.
+ * @param expected_indices Expected retained test indices.
+ */
 void RunNmsCase(std::vector<pcod_common::BoundingBox> boxes,
                 float iou_threshold,
                 int max_detections,
@@ -41,6 +57,7 @@ void RunNmsCase(std::vector<pcod_common::BoundingBox> boxes,
 
 }  // namespace
 
+/** Run rotated NMS regression checks. */
 int main() {
   {
     pcod_common::BoundingBox box_a;

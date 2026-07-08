@@ -12,6 +12,7 @@
 
 namespace {
 
+/** Build a valid manifest baseline for validation tests. */
 pcod_common::ModelManifest MakeValidManifest() {
   pcod_common::ModelManifest manifest;
   manifest.schema_version = pcod_common::kManifestSchemaVersion;
@@ -63,6 +64,10 @@ pcod_common::ModelManifest MakeValidManifest() {
   return manifest;
 }
 
+/** Return whether invoking @p fn throws the expected runtime error.
+ * @param fn Operation expected to throw.
+ * @return Whether a runtime error was observed.
+ */
 bool ExpectRuntimeError(const std::function<void()>& fn) {
   try {
     fn();
@@ -74,6 +79,7 @@ bool ExpectRuntimeError(const std::function<void()>& fn) {
 
 }  // namespace
 
+/** Run manifest semantic validation regression checks. */
 int main() {
   {
     auto manifest = MakeValidManifest();

@@ -7,6 +7,7 @@
 #include <cmath>
 #include <stdexcept>
 
+/** Run point preprocessing regression checks. */
 int main() {
   pcod_common::PointPreprocessConfig config;
   config.x_min = -1.0f;

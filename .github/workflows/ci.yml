@@ -22,7 +22,7 @@ jobs:
       - name: Install check tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang-format-18
+          sudo apt-get install -y clang-format-18 doxygen graphviz
           python -m pip install "black==26.3.1" "flake8==7.3.0" flake8-docstrings flake8-import-order flake8-quotes
       - name: Check source license headers
         run: python scripts/check_license_headers.py
@@ -32,6 +32,10 @@ jobs:
           flake8 --config=.flake8 python scripts
       - name: Check C++ and CUDA formatting
         run: clang-format-18 --dry-run --Werror $(find csrc include src tests -type f \( -name '*.cpp' -o -name '*.cu' -o -name '*.hpp' \))
+      - name: Check Doxygen documentation
+        run: |
+          git clone --depth 1 --branch v2.4.1 https://github.com/jothepro/doxygen-awesome-css.git doxygen-awesome-css
+          doxygen Doxyfile
 
   cmake:
     name: CMake (${{ matrix.name }})

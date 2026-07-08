@@ -12,6 +12,10 @@
 
 namespace {
 
+/** Return whether invoking @p fn throws the expected invalid-argument error.
+ * @param fn Operation expected to throw.
+ * @return Whether an invalid-argument error was observed.
+ */
 bool ExpectInvalidArgument(const std::function<void()>& fn) {
   try {
     fn();
@@ -23,6 +27,7 @@ bool ExpectInvalidArgument(const std::function<void()>& fn) {
 
 }  // namespace
 
+/** Run PBOD decoder input-validation regression checks. */
 int main() {
   using pcod_common::BuildPillarGrid;
   using pcod_common::DecodePbod;

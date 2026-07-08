@@ -6,6 +6,7 @@
 #include <cassert>
 #include <cmath>
 
+/** Run pillar-grid construction regression checks. */
 int main() {
   {
     auto grid = pcod_common::BuildPillarGrid({2, 3}, {{{0.0f, 2.0f}, {0.0f, 3.0f}, {-1.0f, 1.0f}}}, 1, 1);

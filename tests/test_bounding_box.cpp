@@ -8,6 +8,14 @@
 
 namespace {
 
+/** Build a minimal oriented bounding box for geometry tests.
+ * @param x Box center X.
+ * @param y Box center Y.
+ * @param length Box length.
+ * @param width Box width.
+ * @param yaw Box heading.
+ * @return Configured bounding box.
+ */
 pcod_common::BoundingBox MakeBox(float x, float y, float length, float width, float yaw) {
   pcod_common::BoundingBox box;
   box.center = {x, y};
@@ -19,6 +27,7 @@ pcod_common::BoundingBox MakeBox(float x, float y, float length, float width, fl
 
 }  // namespace
 
+/** Run bounding-box geometry regression checks. */
 int main() {
   const pcod_common::BoundingBox base = MakeBox(0.0f, 0.0f, 4.0f, 2.0f, 0.0f);
 
