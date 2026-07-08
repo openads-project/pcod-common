@@ -1,5 +1,17 @@
 # pcod-common
 
+<p align="center">
+  <a href="https://github.com/openads-project"><img src="https://img.shields.io/badge/OpenADS-f5ff01"/></a>
+  <a href="https://github.com/openads-project/pcod-common/releases/latest"><img src="https://img.shields.io/github/v/release/openads-project/pcod-common"/></a>
+  <a href="https://github.com/openads-project/pcod-common/blob/main/LICENSE"><img src="https://img.shields.io/github/license/openads-project/pcod-common"/></a>
+  <br>
+  <a href="https://github.com/openads-project/pcod-common/actions/workflows/ci.yml"><img src="https://github.com/openads-project/pcod-common/actions/workflows/ci.yml/badge.svg"/></a>
+  <a href="https://openads-project.github.io/pcod-common"><img src="https://github.com/openads-project/pcod-common/actions/workflows/docs.yml/badge.svg"/></a>
+</p>
+
+> [!IMPORTANT]
+> This repository is part of [***OpenADS***](https://github.com/openads-project), the *Open Automated Driving Systems* project. *OpenADS* and its modules have been initiated and are currently being maintained by the [**Institute for Automotive Engineering (ika) at RWTH Aachen University**](https://www.ika.rwth-aachen.de/de/).
+
 **Shared Preprocessing and Postprocessing Library for Point Cloud Object Detection.**
 
 This repo is the common runtime layer used by both the training/export pipeline and the ROS inference node.
