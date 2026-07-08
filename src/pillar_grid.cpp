@@ -28,8 +28,8 @@ PillarGrid BuildPillarGrid(const std::array<int, 2>& pillar_map_size,
 
   const float dx = (grid.x_max - grid.x_min) / static_cast<float>(grid.grid_x);
   const float dy = (grid.y_max - grid.y_min) / static_cast<float>(grid.grid_y);
-  const float half_dx = dx * 0.5f;
-  const float half_dy = dy * 0.5f;
+  const float half_dx = dx * 0.5F;
+  const float half_dy = dy * 0.5F;
 
   const int num_pillars = grid.grid_x * grid.grid_y;
   grid.centers.resize(static_cast<std::size_t>(num_pillars) * 3);
@@ -41,7 +41,7 @@ PillarGrid BuildPillarGrid(const std::array<int, 2>& pillar_map_size,
       const float y_center = grid.y_min + half_dy + static_cast<float>(iy) * dy;
       grid.centers[offset++] = x_center;
       grid.centers[offset++] = y_center;
-      grid.centers[offset++] = 0.0f;
+      grid.centers[offset++] = 0.0F;
     }
   }
 

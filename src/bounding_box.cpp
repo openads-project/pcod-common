@@ -47,17 +47,17 @@ float BoundingBox::intersection_area(const BoundingBox& other) const {
   }
 
   if (intersection.size() <= 2) {
-    return 0.0f;
+    return 0.0F;
   }
 
-  float area = 0.0f;
+  float area = 0.0F;
   for (std::size_t i = 0; i < intersection.size(); ++i) {
     const BoundingBoxVertex& p = intersection[i];
     const BoundingBoxVertex& q = intersection[(i + 1) % intersection.size()];
     area += p.cross(q);
   }
 
-  return 0.5f * std::abs(area);
+  return 0.5F * std::abs(area);
 }
 
 bool BoundingBox::overlaps(const BoundingBox& other, float iou_threshold) const {
@@ -69,8 +69,8 @@ bool BoundingBox::overlaps(const BoundingBox& other, float iou_threshold) const 
 
 std::vector<BoundingBoxVertex> BoundingBox::rectangle_vertices() const {
   float angle = yaw;
-  float dx = length / 2.0f;
-  float dy = width / 2.0f;
+  float dx = length / 2.0F;
+  float dy = width / 2.0F;
   float dxcos = dx * std::cos(angle);
   float dxsin = dx * std::sin(angle);
   float dycos = dy * std::cos(angle);

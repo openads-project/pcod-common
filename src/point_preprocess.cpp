@@ -45,7 +45,7 @@ bool PointPreprocessor::IsPointValid(float x, float y, float z) const {
     while (angle_offset < static_cast<float>(-M_PI)) {
       angle_offset += static_cast<float>(2.0 * M_PI);
     }
-    if (std::abs(angle_offset) > config_.da_fov_rad * 0.5f + 1e-6f) {
+    if (std::abs(angle_offset) > config_.da_fov_rad * 0.5F + 1e-6F) {
       return false;
     }
   }
@@ -70,16 +70,16 @@ float PointPreprocessor::NormalizePointFeature(float intensity) const {
     return intensity;
   }
   if (config_.normalization_type == PointFeatureNormalizationType::kValueThreshold) {
-    if (config_.value_threshold <= 0.0f) {
+    if (config_.value_threshold <= 0.0F) {
       return intensity;
     }
-    const float clipped = std::min(std::max(intensity, 0.0f), config_.value_threshold);
+    const float clipped = std::min(std::max(intensity, 0.0F), config_.value_threshold);
     return clipped / std::max(config_.value_threshold, config_.epsilon);
   }
   if (config_.normalization_type == PointFeatureNormalizationType::kMinMax) {
     const float denom = std::max(config_.max_value - config_.min_value, config_.epsilon);
     const float scaled = (intensity - config_.min_value) / denom;
-    return std::min(std::max(scaled, 0.0f), 1.0f);
+    return std::min(std::max(scaled, 0.0F), 1.0F);
   }
   if (config_.normalization_type == PointFeatureNormalizationType::kZScore) {
     return (intensity - z_score_mean_) / std::max(z_score_std_, config_.epsilon);

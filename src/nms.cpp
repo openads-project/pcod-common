@@ -18,7 +18,7 @@ void ApplyRotatedNms(std::vector<BoundingBox>& bboxes, const NmsConfig& config) 
   scored.reserve(bboxes.size());
 
   for (auto& bbox : bboxes) {
-    float max_class_score = 0.0f;
+    float max_class_score = 0.0F;
     std::size_t max_class_idx = 0;
     for (const auto& entry : bbox.classification) {
       if (entry.score > max_class_score) {

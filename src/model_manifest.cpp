@@ -418,7 +418,7 @@ ModelManifest LoadModelManifest(const std::string& path) {
 
     manifest.runtime_defaults.preprocessing.point_feature.value_threshold =
         LoadOptionalScalarValue<float>(LoadOptionalChild(point_feature, "value_threshold"),
-                                       "runtime_defaults.preprocessing.point_feature.value_threshold", 0.0f);
+                                       "runtime_defaults.preprocessing.point_feature.value_threshold", 0.0F);
     manifest.runtime_defaults.postprocessing.class_score_threshold = RequireScalarValue<float>(
         RequireChild(runtime_postprocessing, "class_score_threshold", "runtime_defaults.postprocessing.class_score_threshold"),
         "runtime_defaults.postprocessing.class_score_threshold");
@@ -529,13 +529,13 @@ void ValidateModelManifest(const ModelManifest& manifest) {
   if (manifest.frozen_contract.model.first_up_stride <= 0) {
     throw std::runtime_error("frozen_contract.model.first_up_stride must be > 0");
   }
-  if (manifest.frozen_contract.preprocessing.point_feature_normalization.epsilon <= 0.0f) {
+  if (manifest.frozen_contract.preprocessing.point_feature_normalization.epsilon <= 0.0F) {
     throw std::runtime_error("frozen_contract.preprocessing.point_feature_normalization.epsilon must be > 0");
   }
 
   const auto& norm = manifest.frozen_contract.preprocessing.point_feature_normalization;
   if (norm.type == "value_threshold") {
-    if (manifest.runtime_defaults.preprocessing.point_feature.value_threshold <= 0.0f) {
+    if (manifest.runtime_defaults.preprocessing.point_feature.value_threshold <= 0.0F) {
       throw std::runtime_error(
           "runtime_defaults.preprocessing.point_feature.value_threshold must be > 0 when value_threshold normalization is used");
     }
@@ -549,12 +549,12 @@ void ValidateModelManifest(const ModelManifest& manifest) {
     throw std::runtime_error("frozen_contract.preprocessing.point_feature_normalization.type is invalid");
   }
 
-  if (manifest.runtime_defaults.postprocessing.class_score_threshold < 0.0f ||
-      manifest.runtime_defaults.postprocessing.class_score_threshold > 1.0f) {
+  if (manifest.runtime_defaults.postprocessing.class_score_threshold < 0.0F ||
+      manifest.runtime_defaults.postprocessing.class_score_threshold > 1.0F) {
     throw std::runtime_error("runtime_defaults.postprocessing.class_score_threshold must be within [0.0, 1.0]");
   }
-  if (manifest.runtime_defaults.postprocessing.nms_iou_threshold < 0.0f ||
-      manifest.runtime_defaults.postprocessing.nms_iou_threshold > 1.0f) {
+  if (manifest.runtime_defaults.postprocessing.nms_iou_threshold < 0.0F ||
+      manifest.runtime_defaults.postprocessing.nms_iou_threshold > 1.0F) {
     throw std::runtime_error("runtime_defaults.postprocessing.nms.iou_threshold must be within [0.0, 1.0]");
   }
   if (manifest.runtime_defaults.postprocessing.max_detections < 0) {
@@ -568,7 +568,7 @@ void ValidateModelManifest(const ModelManifest& manifest) {
     throw std::runtime_error("runtime_defaults.postprocessing.nms.score_threshold must contain one value or one value per class");
   }
   for (float threshold : manifest.runtime_defaults.postprocessing.nms_score_thresholds) {
-    if (threshold < 0.0f || threshold > 1.0f) {
+    if (threshold < 0.0F || threshold > 1.0F) {
       throw std::runtime_error("runtime_defaults.postprocessing.nms.score_threshold entries must be within [0.0, 1.0]");
     }
   }
