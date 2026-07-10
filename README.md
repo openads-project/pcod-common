@@ -71,11 +71,12 @@ Some C++ tests validate Python/C++ contract parity and require `python3` to be a
 ## Tests (Python)
 
 ```sh
+pip install -e ".[dev]"
 pytest
 ```
 
 `python/tests/test_postprocess.py` requires `torch` and `torchvision`.
-If those packages are not installed, those postprocess tests are skipped and manifest tests still run.
+Tests with unavailable dependencies or CUDA extensions are skipped; manifest tests still run.
 
 ## Build Python Distributions
 
@@ -199,20 +200,32 @@ The manifest is split into three sections:
 - `frozen_contract`: non-overridable inference contract that must match the exported model exactly
 - `runtime_defaults`: exported defaults for inference-time behavior that may be overridden by the inference user
 
-ROS inference treats `frozen_contract` as mandatory source-of-truth model configuration and uses `runtime_defaults` as the initial values for overridable ROS parameters such as `preprocessing.point_feature.value_threshold` and NMS thresholds.
+The ROS inference node treats `frozen_contract` as mandatory source-of-truth model configuration and uses `runtime_defaults` as the initial values for overridable ROS parameters such as `preprocessing.point_feature.value_threshold` and NMS thresholds.
 The schema lives in `schemas/model_manifest.schema.json`.
-Both the Python and C++ loaders validate the same canonical structure, reject unsupported keys, and require bundle-relative file references.
-The C++ implementation parses YAML via `yaml-cpp`.
 
 ## Integration Notes
 
-- Training repo should include pcod-common as a submodule and add it to the Python environment (e.g., `pip install -e pcod-common`).
-- ROS repo should include pcod-common as a submodule and link against the C++ library.
+- The training repo should include pcod-common as a submodule and add it to the Python environment (e.g., `pip install -e pcod-common`).
+- The ROS repo should include pcod-common as a submodule and link against the C++ library.
 
-## Documentation
+## 📝 Documentation
 
 Implementation details are available in the [Source Code Documentation](https://openads-project.github.io/pcod-common).
 
-## Licensing
+## ⚖️ Licensing
 
 The source code in this repository is licensed under Apache-2.0, see [LICENSE](LICENSE).
+
+## 🙏 Acknowledgements
+
+Development and maintenance of this repository are supported by the following projects. We acknowledge the funding of the respective institutions.
+
+| Project | Funding Institution | Grant Number |
+| --- | --- | --- |
+| [AIGGREGATE](https://aiggregate.eu/) | 🇪🇺 European Union | 101202457 |
+
+<p>
+  <img src="https://ec.europa.eu/regional_policy/images/information-sources/logo-download-center/eu_funded_en.jpg" height=70>
+</p>
+
+<sup><sub>Funded by the European Union. Views and opinions expressed are however those of the author(s) only and do not necessarily reflect those of the European Union or the European Climate, Infrastructure and Environment Executive Agency (CINEA). Neither the European Union nor CINEA can be held responsible for them.</sup></sup>
