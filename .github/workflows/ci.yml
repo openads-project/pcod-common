@@ -26,6 +26,8 @@ jobs:
           python -m pip install "black==26.3.1" "flake8==7.3.0" flake8-docstrings flake8-import-order flake8-quotes
       - name: Check source license headers
         run: python scripts/check_license_headers.py
+      - name: Check project versions
+        run: python scripts/check_versions.py
       - name: Lint Python
         run: |
           black --check --line-length=130 python scripts

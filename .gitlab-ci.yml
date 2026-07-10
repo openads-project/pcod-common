@@ -10,6 +10,12 @@ license:headers:
   script:
     - python3 scripts/check_license_headers.py
 
+versions:consistent:
+  stage: checks
+  image: python:3.12-bookworm
+  script:
+    - python3 scripts/check_versions.py
+
 lint:python:
   stage: checks
   image: python:3.12-bookworm
