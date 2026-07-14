@@ -9,36 +9,98 @@
   <a href="https://openads-project.github.io/pcod-common"><img src="https://github.com/openads-project/pcod-common/actions/workflows/docs.yml/badge.svg"/></a>
 </p>
 
+**Shared Preprocessing and Postprocessing Library for Point Cloud Object Detection**
+
+This repository provides shared C++ and Python components for point cloud object detection training, model export, and ROS 2 inference. Using the same geometry, decoding, non-maximum suppression (NMS), and model-manifest implementations keeps the training and inference pipelines consistent.
+
+The library includes PBOD decoding, rotated NMS, point filtering, CUDA kernels for pillarization and rotated NMS, and a model-manifest schema shared by the C++ and Python APIs.
+
+<p align="center">
+  <strong>🚀 <a href="#-quick-start">Quick Start</a></strong> • <strong>💻 <a href="#-development">Development</a></strong> • <strong>📝 <a href="#-documentation">Documentation</a></strong>
+</p>
+
 > [!IMPORTANT]
 > This repository is part of [***OpenADS***](https://github.com/openads-project), the *Open Automated Driving Systems* project. *OpenADS* and its modules have been initiated and are currently being maintained by the [**Institute for Automotive Engineering (ika) at RWTH Aachen University**](https://www.ika.rwth-aachen.de/de/).
 
-**Shared Preprocessing and Postprocessing Library for Point Cloud Object Detection.**
+## 🚀 Quick Start
 
-This repo is the common runtime layer used by both the training/export pipeline and the ROS inference node.
-It centralizes geometry math, decoding, NMS, and manifest parsing so those two repos stay aligned.
+### Requirements
 
-What you can do with pcod-common:
-- Build a small C++ library for PBOD decoding, rotated NMS, and point filtering.
-- Consume the same model manifest schema in Python and C++.
-- Use PyTorch CUDA extensions for pillarization and rotated NMS during training/inference.
+- CMake 3.16 or newer
+- A C++17 compiler
+- yaml-cpp
+- Python 3.12 or newer for the Python package
+- Optional: a CUDA toolkit compatible with the installed PyTorch build and a CUDA-capable GPU for the CUDA extensions
 
-This repository provides:
-- C++ core utilities for postprocessing (PBOD decoding + rotated NMS).
-- CUDA kernels for pillarization and rotated NMS (built via PyTorch extensions when needed).
-- A lightweight Python package for training/inference utilities.
-- A shared model manifest schema used by both training export and ROS inference.
+### C++ Installation
 
-## Layout
+Clone, build, and install the C++ library:
 
-- `include/pcod_common/`: public C++ headers.
-- `src/`: C++ implementations.
-- `csrc/`: CUDA/C++ kernels for torch extensions.
-- `python/pcod_common/`: Python package sources.
-- `schemas/`: JSON schema for the model manifest.
-- `tests/`: C++ smoke tests.
-- `python/tests/`: Python unit tests.
+```sh
+git clone https://github.com/openads-project/pcod-common.git
+cmake -S pcod-common -B build/pcod-common -DPCOD_COMMON_BUILD_TESTS=OFF
+cmake --build build/pcod-common
+cmake --install build/pcod-common --prefix /path/to/prefix
+```
 
-## Build (C++)
+After installation, link your CMake target to the package:
+
+```cmake
+find_package(pcod_common CONFIG REQUIRED)
+target_link_libraries(my_target PRIVATE pcod_common::pcod_common)
+```
+
+When using a custom installation prefix, add it to `CMAKE_PREFIX_PATH` when configuring the consuming project, for example with `-DCMAKE_PREFIX_PATH=/path/to/prefix`.
+
+Alternatively, add this repository directly to your CMake project:
+
+```cmake
+add_subdirectory(pcod-common)
+target_link_libraries(my_target PRIVATE pcod_common)
+```
+
+### Python Installation
+
+Install the Python package from the repository root:
+
+```sh
+pip install .
+```
+
+### Python Usage Example
+
+```python
+from pcod_common.preprocessing.pillars import PillarPreprocessor, PillarPreprocessorConfig
+
+config = PillarPreprocessorConfig(
+    x_min=-50.0,
+    x_max=50.0,
+    y_min=-50.0,
+    y_max=50.0,
+    z_min=-2.0,
+    z_max=3.0,
+    voxel_x=0.2,
+    voxel_y=0.2,
+    point_feature_dim=1,
+)
+preprocessor = PillarPreprocessor(config)
+```
+
+## 💻 Development
+
+### Repository Layout
+
+- `include/pcod_common/`: public C++ headers
+- `src/`: C++ implementations
+- `csrc/`: CUDA/C++ kernels for PyTorch extensions
+- `python/pcod_common/`: Python package sources
+- `schemas/`: JSON schema for the model manifest
+- `tests/`: C++ tests
+- `python/tests/`: Python tests
+
+### C++ Tests
+
+On Debian or Ubuntu, install the required build dependencies and run the test suite:
 
 ```sh
 apt-get update && apt-get install -y cmake g++ pkg-config libyaml-cpp-dev python3 python3-yaml
@@ -47,38 +109,20 @@ cmake --build build
 ctest --test-dir build
 ```
 
-The existing subdirectory workflow remains supported:
+Some C++ tests compare the Python and C++ contracts and require `python3` to be available on `PATH`.
 
-```cmake
-add_subdirectory(pcod-common)
-target_link_libraries(my_target PRIVATE pcod_common)
-```
+### Python Tests
 
-For an installed package, consumers can use the namespaced CMake target:
-
-```sh
-cmake --install build --prefix /path/to/prefix
-```
-
-```cmake
-find_package(pcod_common CONFIG REQUIRED)
-target_link_libraries(my_target PRIVATE pcod_common::pcod_common)
-```
-
-CUDA kernels are optional and are built at runtime via the PyTorch extension loaders in `python/pcod_common/torch_extensions/`.
-Some C++ tests validate Python/C++ contract parity and require `python3` to be available on `PATH`.
-
-## Tests (Python)
+Install the package in editable mode with its development dependencies and run the test suite:
 
 ```sh
 pip install -e ".[dev]"
 pytest
 ```
 
-`python/tests/test_postprocess.py` requires `torch` and `torchvision`.
-Tests with unavailable dependencies or CUDA extensions are skipped; manifest tests still run.
+`python/tests/test_postprocess.py` requires PyTorch and TorchVision. Tests whose optional dependencies or CUDA extensions are unavailable are skipped; the manifest tests still run.
 
-## Build Python Distributions
+### Build Python Distributions
 
 Build and validate the wheel and source distribution from the repository root:
 
@@ -88,50 +132,27 @@ python3 -m build
 python3 -m twine check dist/*
 ```
 
-Published distributions include the model-manifest schema and the C++/CUDA sources required to build the optional PyTorch
-extensions at runtime. Distribution validation does not require a GPU. Compiling the extensions requires Ninja and a CUDA
-toolkit compatible with the installed PyTorch build; executing them requires a CUDA-capable GPU.
+Published distributions include the model-manifest schema and the C++/CUDA sources required to build the optional PyTorch extensions at runtime. Validating a distribution does not require a GPU. Compiling the extensions requires Ninja and a CUDA toolkit compatible with the installed PyTorch build; running them requires a CUDA-capable GPU.
 
-## Devcontainer
+### Development Container
 
-A basic devcontainer definition is provided in `.devcontainer/`. In a container, install Python deps (including torch) and run:
+A basic development container configuration is provided in `.devcontainer/`. In the container, install the system and Python dependencies, including PyTorch, and run:
 
 ```sh
-pip install -e .[dev]
+sudo apt-get update
+sudo apt-get install -y pkg-config libyaml-cpp-dev
+pip install -e ".[dev]"
 cmake -S . -B build -DPCOD_COMMON_BUILD_TESTS=ON
 cmake --build build
 ctest --test-dir build
 pytest
 ```
 
-## Python Usage
+CUDA kernels are built on demand by the PyTorch extension loaders in `python/pcod_common/torch_extensions/`.
 
-Install from the repo root (editable for development):
+## C++ Usage Example
 
-```sh
-pip install -e .
-```
-
-Example usage (training):
-
-```python
-from pcod_common.preprocessing.pillars import PillarPreprocessor, PillarPreprocessorConfig
-from pcod_common.postprocess import apply_nms
-
-cfg = PillarPreprocessorConfig(
-    x_min=-50.0, x_max=50.0,
-    y_min=-50.0, y_max=50.0,
-    z_min=-2.0, z_max=3.0,
-    voxel_x=0.2, voxel_y=0.2,
-    point_feature_dim=1,
-)
-preprocessor = PillarPreprocessor(cfg)
-```
-
-## End-to-End Example (C++)
-
-This minimal example shows point filtering + PBOD decoding using the C++ API.
-It keeps the tensors tiny (four pillars, two classes) so the control flow is easy to follow.
+This example demonstrates point filtering and PBOD decoding with the C++ API. It uses four pillars and two classes to keep the control flow easy to follow.
 
 ```cpp
 #include "pcod_common/pbod_postprocess.hpp"
@@ -193,20 +214,20 @@ int main() {
 
 ## Model Manifest
 
-Training export emits one canonical YAML file named `model_manifest.yml` inside every exported bundle.
-The manifest is split into three sections:
+Each exported model bundle contains a `model_manifest.yml` file with three sections:
 
-- `artifact`: bundle metadata and file references that always point to files inside the bundle
-- `frozen_contract`: non-overridable inference contract that must match the exported model exactly
-- `runtime_defaults`: exported defaults for inference-time behavior that may be overridden by the inference user
+- `artifact`: bundle metadata and references to files within the bundle
+- `frozen_contract`: model settings that inference applications cannot override and that must match the exported model
+- `runtime_defaults`: default inference settings that applications may override
 
-The ROS inference node treats `frozen_contract` as mandatory source-of-truth model configuration and uses `runtime_defaults` as the initial values for overridable ROS parameters such as `preprocessing.point_feature.value_threshold` and NMS thresholds.
-The schema lives in `schemas/model_manifest.schema.json`.
+The ROS 2 inference node uses `frozen_contract` as the authoritative model configuration and initializes overridable ROS parameters, such as `preprocessing.point_feature.value_threshold` and the NMS thresholds, from `runtime_defaults`. The schema is defined in `schemas/model_manifest.schema.json`.
 
 ## Integration Notes
 
-- The training repo should include pcod-common as a submodule and add it to the Python environment (e.g., `pip install -e pcod-common`).
-- The ROS repo should include pcod-common as a submodule and link against the C++ library.
+- For training and model export, include `pcod-common` as a Git submodule and add it to the Python environment, for example with `pip install -e pcod-common`.
+- For ROS 2 inference, include `pcod-common` as a Git submodule and link against the C++ library.
+
+For a complete ROS 2 integration example, see [point_cloud_object_detection](https://github.com/openads-project/point_cloud_object_detection), which includes `pcod-common` as a Git submodule and links against its C++ library.
 
 ## 📝 Documentation
 
