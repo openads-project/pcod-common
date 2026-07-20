@@ -24,7 +24,7 @@ EXPECTED_RESOURCES = (
 
 def main() -> int:
     """Validate metadata, imports, schema contents, and extension sources."""
-    expected_version = sys.argv[1] if len(sys.argv) > 1 else "0.1.0"
+    expected_version = sys.argv[1] if len(sys.argv) > 1 else "1.0.0"
     installed_version = metadata.version("pcod-common")
     if installed_version != expected_version or pcod_common.__version__ != expected_version:
         raise RuntimeError(
