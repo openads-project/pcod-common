@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pcod-common"
-version = "0.1.0"
+version = "1.0.0"
 description = "Shared preprocessing/postprocessing utilities for point cloud object detection."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -17,7 +17,7 @@ maintainers = [
   { name = "Bastian Lampe", email = "bastian.lampe@rwth-aachen.de" }
 ]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 5 - Production/Stable",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.12",
   "Operating System :: POSIX :: Linux",

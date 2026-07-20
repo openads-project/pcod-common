@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import ast
+import re
 import sys
 import tomllib
 from pathlib import Path
@@ -23,13 +24,22 @@ def python_version(path: Path) -> str:
     raise ValueError(f"No static __version__ assignment found in {path}")
 
 
+def cpp_version(path: Path) -> str:
+    """Read the static ``kVersion`` assignment from a C++ header."""
+    match = re.search(r'\bkVersion\s*=\s*"([^"]+)"', path.read_text(encoding="utf-8"))
+    if match:
+        return match.group(1)
+    raise ValueError(f"No static kVersion assignment found in {path}")
+
+
 def main() -> int:
-    """Compare the CMake, package metadata, and Python versions."""
+    """Compare the CMake, package metadata, Python, and C++ versions."""
     repository = Path(__file__).resolve().parents[1]
     versions = {
         "VERSION": (repository / "VERSION").read_text(encoding="utf-8").strip(),
         "pyproject.toml": tomllib.loads((repository / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"],
         "python/pcod_common/version.py": python_version(repository / "python/pcod_common/version.py"),
+        "include/pcod_common/version.hpp": cpp_version(repository / "include/pcod_common/version.hpp"),
     }
 
     if len(set(versions.values())) != 1:
