@@ -6,7 +6,7 @@
   <a href="https://github.com/openads-project/pcod-common/blob/main/LICENSE"><img src="https://img.shields.io/github/license/openads-project/pcod-common"/></a>
   <br>
   <a href="https://github.com/openads-project/pcod-common/actions/workflows/ci.yml"><img src="https://github.com/openads-project/pcod-common/actions/workflows/ci.yml/badge.svg"/></a>
-  <a href="https://openads-project.github.io/pcod-common"><img src="https://github.com/openads-project/pcod-common/actions/workflows/docs.yml/badge.svg"/></a>
+  <a href="https://openads-project.github.io/pcod-common"><img alt="Documentation" src="https://github.com/openads-project/pcod-common/actions/workflows/docs.yml/badge.svg?branch=main"/></a>
 </p>
 
 **Shared Preprocessing and Postprocessing Library for Point Cloud Object Detection**
