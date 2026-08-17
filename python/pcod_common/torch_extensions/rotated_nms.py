@@ -65,7 +65,7 @@ def load_rotated_nms_extension(force_build: bool | None = None):
         extension_name="pcod_common__rotated_nms",
         sources=(src_cpp, src_cuda),
         lock_name="pcod_common__rotated_nms.lock",
-        verbose=True,
+        verbose=False,
         force_build=build_flag,
         torch_extensions_dir=Path.cwd() / ".torch_extensions",
     )

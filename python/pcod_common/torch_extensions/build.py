@@ -55,8 +55,12 @@ def load_cached_extension_module(
     """Import a fresh cached torch extension artifact if one exists."""
 
     resolved_build_root = Path(build_root) if build_root is not None else Path(get_default_build_root())
+    candidate_paths = {
+        resolved_build_root / extension_name / f"{extension_name}.so",
+        *resolved_build_root.glob(f"*/{extension_name}/{extension_name}.so"),
+    }
     candidates = sorted(
-        resolved_build_root.glob(f"py*_cu*/{extension_name}/{extension_name}.so"),
+        (candidate for candidate in candidate_paths if candidate.is_file()),
         key=lambda path: path.stat().st_mtime,
         reverse=True,
     )
@@ -68,7 +72,9 @@ def load_cached_extension_module(
         try:
             if candidate.stat().st_mtime < newest_source_mtime:
                 continue
-            spec = importlib.util.spec_from_file_location(module_name, candidate)
+            # CPython derives the native PyInit_* symbol from the spec name, so use
+            # the extension's build name here and register the package alias below.
+            spec = importlib.util.spec_from_file_location(extension_name, candidate)
             if spec is None or spec.loader is None:
                 continue
             module = importlib.util.module_from_spec(spec)
@@ -117,25 +123,38 @@ def load_cached_torch_extension(
         torch_extensions_dir=torch_extensions_dir,
         default_cuda_arch_list=default_cuda_arch_list,
     )
+    configured_build_root = os.environ.get("TORCH_EXTENSIONS_DIR")
+    cache_build_root = Path(configured_build_root) if configured_build_root else None
 
     imported = import_first_available(import_module_names)
     if imported is not None:
         return imported
 
     source_paths = [Path(source) for source in sources]
-    cached_module = load_cached_extension_module(primary_module_name, extension_name, source_paths)
+    cached_module = load_cached_extension_module(
+        primary_module_name,
+        extension_name,
+        source_paths,
+        build_root=cache_build_root,
+    )
     if cached_module is not None:
         return cached_module
 
     if not force_build:
         raise RuntimeError(f"{extension_name} import failed and build is disabled.")
 
-    lock_path = Path(get_default_build_root()) / (lock_name or f"{extension_name}.lock")
+    lock_root = cache_build_root or Path(get_default_build_root())
+    lock_path = lock_root / (lock_name or f"{extension_name}.lock")
     with exclusive_build_lock(lock_path):
         imported = import_first_available(import_module_names)
         if imported is not None:
             return imported
-        cached_module = load_cached_extension_module(primary_module_name, extension_name, source_paths)
+        cached_module = load_cached_extension_module(
+            primary_module_name,
+            extension_name,
+            source_paths,
+            build_root=cache_build_root,
+        )
         if cached_module is not None:
             return cached_module
         ext = load(
