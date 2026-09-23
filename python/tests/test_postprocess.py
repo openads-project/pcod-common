@@ -18,7 +18,7 @@ pytestmark = pytest.mark.skipif(
 if HAS_TORCH and HAS_TORCHVISION:
     import pcod_common.postprocess as postprocess
     import torch
-    from pcod_common.postprocess import apply_nms
+    from pcod_common.postprocess import apply_nms, apply_nms_batch
 
 
 def _make_box(x: float, y: float, length: float = 1.0, width: float = 1.0, yaw: float = 0.0) -> list[float]:
@@ -349,6 +349,58 @@ def test_rotated_extension_cuda_nms_cases_match_cpu_and_expected(
 
     assert cpu_keep.cpu().tolist() == expected
     assert cuda_keep.cpu().tolist() == expected
+
+
+@pytest.mark.parametrize(
+    ("pre_nms_topk", "per_class_topk"),
+    [(None, True), (12, True), (12, False)],
+)
+def test_apply_nms_batch_cuda_matches_per_sample_reference(
+    pre_nms_topk: int | None,
+    per_class_topk: bool,
+):
+    """Keep batched CUDA NMS exactly equal to the public per-sample API."""
+    if not torch.cuda.is_available():
+        pytest.skip("CUDA is not available to torch")
+
+    try:
+        ext = postprocess._get_rotated_ext()
+    except Exception as exc:  # pragma: no cover - environment-dependent extension toolchain
+        pytest.skip(f"rotated NMS extension unavailable: {exc}")
+    if not hasattr(ext, "rotated_nms_cuda_batched"):
+        pytest.skip("rotated NMS extension has no batched CUDA entrypoint")
+
+    generator = torch.Generator(device="cuda").manual_seed(20260923)
+    boxes_batch = []
+    scores_batch = []
+    labels_batch = []
+    for sample_idx in range(9):
+        count = 0 if sample_idx == 0 else 32 + sample_idx
+        boxes = torch.randn(count, 7, generator=generator, device="cuda")
+        boxes[:, :2] *= 4.0
+        boxes[:, 3:6] = boxes[:, 3:6].abs() + 0.5
+        boxes_batch.append(boxes)
+        scores_batch.append(torch.rand(count, generator=generator, device="cuda"))
+        labels_batch.append(torch.randint(0, 3, (count,), generator=generator, device="cuda"))
+
+    kwargs = {
+        "score_thresholds": [0.1, 0.2, 0.3],
+        "iou_threshold": 0.5,
+        "max_num_objects": 16,
+        "per_class_topk": per_class_topk,
+        "use_rotated": True,
+        "pre_nms_topk": pre_nms_topk,
+    }
+    expected = [
+        apply_nms(boxes, scores, labels, **kwargs)
+        for boxes, scores, labels in zip(boxes_batch, scores_batch, labels_batch)
+    ]
+
+    actual = apply_nms_batch(boxes_batch, scores_batch, labels_batch, **kwargs)
+
+    for actual_sample, expected_sample in zip(actual, expected):
+        for actual_tensor, expected_tensor in zip(actual_sample, expected_sample):
+            assert torch.equal(actual_tensor, expected_tensor)
 
 
 def test_rotated_extension_cpu_rejects_extra_box_columns():

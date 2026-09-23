@@ -9,6 +9,8 @@
 #include <vector>
 
 torch::Tensor rotated_nms_cuda(torch::Tensor boxes, torch::Tensor scores, double iou_threshold, int64_t max_out);
+torch::Tensor rotated_nms_cuda_batched(torch::Tensor sorted_boxes, torch::Tensor group_offsets,
+                                       double iou_threshold, int64_t max_out);
 torch::Tensor oriented_iou_aligned_cuda(torch::Tensor boxes_a, torch::Tensor boxes_b);
 
 namespace {
@@ -188,6 +190,7 @@ torch::Tensor oriented_iou_aligned(torch::Tensor boxes_a, torch::Tensor boxes_b)
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("rotated_nms", &rotated_nms, "Rotated NMS (CPU)");
   m.def("rotated_nms_cuda", &rotated_nms_cuda, "Rotated NMS (CUDA)");
+  m.def("rotated_nms_cuda_batched", &rotated_nms_cuda_batched, "Batched rotated NMS (CUDA)");
   m.def("oriented_iou_aligned", &oriented_iou_aligned, "Aligned oriented IoU (CPU)");
   m.def("oriented_iou_aligned_cuda", &oriented_iou_aligned_cuda, "Aligned oriented IoU (CUDA)");
 }
