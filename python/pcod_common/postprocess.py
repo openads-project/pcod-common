@@ -13,6 +13,8 @@ from pcod_common.torch_extensions.rotated_nms import load_rotated_nms_extension
 from torchvision.ops import nms
 
 _ROTATED_NMS_EXT = None
+NmsResult = Tuple[torch.Tensor, torch.Tensor, torch.Tensor]
+NmsResultWithIndices = Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]
 
 
 def _get_rotated_ext():
@@ -179,10 +181,12 @@ def apply_nms(
     per_class_topk: bool = False,
     use_rotated: bool = True,
     pre_nms_topk: int | None = None,
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Apply axis-aligned or rotated non-maximum suppression."""
+    return_indices: bool = False,
+) -> NmsResult | NmsResultWithIndices:
+    """Apply NMS, optionally returning indices into the input candidate tensors."""
     if boxes.numel() == 0:
-        return boxes, scores, labels
+        result = (boxes, scores, labels)
+        return (*result, labels.new_empty((0,), dtype=torch.long)) if return_indices else result
 
     if boxes.ndim != 2 or boxes.size(1) != 7:
         raise ValueError("boxes must have shape (N, 7)")
@@ -242,14 +246,16 @@ def apply_nms(
         keep_indices.append(original_indices[class_keep])
 
     if not keep_indices:
-        return boxes[:0], scores[:0], labels[:0]
+        result = (boxes[:0], scores[:0], labels[:0])
+        return (*result, labels.new_empty((0,), dtype=torch.long)) if return_indices else result
 
     keep_indices = torch.cat(keep_indices, dim=0)
     if not per_class_topk:
         order = scores[keep_indices].argsort(descending=True)
         keep_indices = keep_indices[order][:max_num_objects]
 
-    return boxes[keep_indices], scores[keep_indices], labels[keep_indices]
+    result = (boxes[keep_indices], scores[keep_indices], labels[keep_indices])
+    return (*result, keep_indices) if return_indices else result
 
 
 def apply_nms_batch(
@@ -263,12 +269,14 @@ def apply_nms_batch(
     per_class_topk: bool = False,
     use_rotated: bool = True,
     pre_nms_topk: int | None = None,
-) -> List[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
+    return_indices: bool = False,
+) -> List[NmsResult | NmsResultWithIndices]:
     """Apply independent class-aware NMS groups in one CUDA launch.
 
     The CUDA path is semantically identical to calling :func:`apply_nms` for every
     item, but executes all sample/class groups concurrently. Unsupported devices or
-    modes deliberately use the reference API.
+    modes deliberately use the reference API. Optional indices refer to each
+    sample's input candidate tensors.
     """
     if not (len(boxes_batch) == len(scores_batch) == len(labels_batch)):
         raise ValueError("boxes_batch, scores_batch, and labels_batch must have equal lengths")
@@ -286,6 +294,7 @@ def apply_nms_batch(
                 per_class_topk=per_class_topk,
                 use_rotated=use_rotated,
                 pre_nms_topk=pre_nms_topk,
+                return_indices=return_indices,
             )
             for boxes, scores, labels in zip(boxes_batch, scores_batch, labels_batch)
         ]
@@ -303,6 +312,7 @@ def apply_nms_batch(
                 per_class_topk=per_class_topk,
                 use_rotated=True,
                 pre_nms_topk=pre_nms_topk,
+                return_indices=return_indices,
             )
             for boxes, scores, labels in zip(boxes_batch, scores_batch, labels_batch)
         ]
@@ -325,6 +335,11 @@ def apply_nms_batch(
     flat_sample_input = torch.cat(sample_chunks, dim=0)
     flat_original_input = torch.cat(original_chunks, dim=0)
     if flat_scores_input.numel() == 0:
+        if return_indices:
+            return [
+                (boxes[:0], scores[:0], labels[:0], labels.new_empty((0,), dtype=torch.long))
+                for boxes, scores, labels in zip(boxes_batch, scores_batch, labels_batch)
+            ]
         return [(boxes[:0], scores[:0], labels[:0]) for boxes, scores, labels in zip(boxes_batch, scores_batch, labels_batch)]
 
     num_classes = len(score_thresholds)
@@ -391,5 +406,6 @@ def apply_nms_batch(
         if not per_class_topk and keep.numel() > max_num_objects:
             order = scores[keep].argsort(descending=True)[:max_num_objects]
             keep = keep[order]
-        results.append((boxes[keep], scores[keep], labels[keep]))
+        result = (boxes[keep], scores[keep], labels[keep])
+        results.append((*result, keep) if return_indices else result)
     return results

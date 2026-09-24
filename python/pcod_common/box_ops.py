@@ -107,12 +107,14 @@ def decode_pbod(
     centers: torch.Tensor,
     score_threshold: float = 0.0,
     yaw_flip_logits: torch.Tensor | None = None,
-) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    objectness_logits: torch.Tensor | None = None,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor] | tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Decode flattened PBOD outputs (B,N,C*7), matching C++ DecodePbod.
 
     One physical box per cell, labeled by its best class. Scores combine the
     exported presence/quality probability and the conditional class probability.
     Returns batch indices, absolute (N,8) boxes including local class, and scores.
+    When objectness logits are supplied, also returns the aligned presence probabilities.
     """
     b, n, _ = reg_logits.shape
     c = class_logits.shape[-1]
@@ -130,8 +132,11 @@ def decode_pbod(
         yaw = yaw + ((yaw.cos() >= 0) != desired).float() * torch.pi
     boxes[:, 6] = torch.remainder(yaw + torch.pi, 2 * torch.pi) - torch.pi
     finite = torch.isfinite(boxes).all(-1) & torch.isfinite(scores[batch, cell])
-    return (
+    result = (
         batch[finite],
         torch.cat((boxes, cls[:, None].float()), -1)[finite],
         scores[batch, cell][finite],
     )
+    if objectness_logits is None:
+        return result
+    return (*result, objectness_logits.float().squeeze(-1).sigmoid()[batch, cell][finite])
