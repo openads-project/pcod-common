@@ -50,7 +50,7 @@ std::vector<BoundingBox> DecodePbod(const PbodOutputsView& outputs, const Pillar
   objects.reserve(static_cast<std::size_t>(outputs.num_pillars));
   for (int idx = 0; idx < outputs.num_pillars; ++idx) {
     const std::size_t pillar_idx = static_cast<std::size_t>(idx);
-    const float score = sigmoid(focal_logits[pillar_idx]);
+    const float objectness = sigmoid(focal_logits[pillar_idx]);
 
     int best_class = 0;
     const std::size_t class_base = pillar_idx * num_classes;
@@ -63,6 +63,14 @@ std::vector<BoundingBox> DecodePbod(const PbodOutputsView& outputs, const Pillar
       }
     }
 
+    float class_denom = 0.0F;
+    for (int c = 0; c < outputs.num_classes; ++c) {
+      class_denom += std::exp(class_logits[class_base + static_cast<std::size_t>(c)] - best_logit);
+    }
+    const float score = objectness / class_denom;
+    if (!std::isfinite(score)) {
+      continue;
+    }
     float score_thresh = 0.0F;
     if (!config.score_thresholds.empty()) {
       const std::size_t class_idx = static_cast<std::size_t>(best_class);
@@ -80,14 +88,16 @@ std::vector<BoundingBox> DecodePbod(const PbodOutputsView& outputs, const Pillar
     const std::size_t reg_offset = (pillar_idx * num_classes + class_idx) * reg_dim_size;
     const std::size_t center_offset = pillar_idx * 3U;
 
-    box.length = std::exp(reg_logits[reg_offset + 3U]) * size_posterior[size_offset + 0U];
-    box.width = std::exp(reg_logits[reg_offset + 4U]) * size_posterior[size_offset + 1U];
-    box.height = std::exp(reg_logits[reg_offset + 5U]) * size_posterior[size_offset + 2U];
+    box.length = std::exp(std::clamp(reg_logits[reg_offset + 3U], -10.0F, 10.0F)) * size_posterior[size_offset + 0U];
+    box.width = std::exp(std::clamp(reg_logits[reg_offset + 4U], -10.0F, 10.0F)) * size_posterior[size_offset + 1U];
+    box.height = std::exp(std::clamp(reg_logits[reg_offset + 5U], -10.0F, 10.0F)) * size_posterior[size_offset + 2U];
     box.center[0] = reg_logits[reg_offset + 0U] * size_posterior[size_offset + 0U] + grid.centers[center_offset + 0U];
     box.center[1] = reg_logits[reg_offset + 1U] * size_posterior[size_offset + 1U] + grid.centers[center_offset + 1U];
     box.z = reg_logits[reg_offset + 2U] * size_posterior[size_offset + 2U] + grid.centers[center_offset + 2U];
     box.yaw = wrap_to_range(reg_logits[reg_offset + 6U], -static_cast<float>(M_PI), static_cast<float>(M_PI));
-    if (std::isnan(box.length) || std::isnan(box.width) || std::isnan(box.height) || std::isnan(box.yaw)) {
+    if (!std::isfinite(box.length) || !std::isfinite(box.width) || !std::isfinite(box.height) ||
+        !std::isfinite(box.yaw) || !std::isfinite(box.center[0]) || !std::isfinite(box.center[1]) ||
+        !std::isfinite(box.z)) {
       continue;
     }
 

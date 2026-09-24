@@ -163,6 +163,17 @@ __device__ __forceinline__ float oriented_iou_single(const float* box_a, const f
   return inter_area / uni;
 }
 
+// NMS compares 3D boxes; retain BEV semantics for legacy zero-height inputs.
+__device__ __forceinline__ float suppression_iou(const float* a, const float* b) {
+  const float bev = oriented_iou_single(a, b);
+  if (a[5] <= 0.0f || b[5] <= 0.0f) return bev;
+  const float area = bev * (a[3] * a[4] + b[3] * b[4]) / (1.0f + bev);
+  const float height = fmaxf(0.0f, fminf(a[2] + a[5] * .5f, b[2] + b[5] * .5f)
+                          - fmaxf(a[2] - a[5] * .5f, b[2] - b[5] * .5f));
+  const float intersection = area * height;
+  return intersection / fmaxf(a[3] * a[4] * a[5] + b[3] * b[4] * b[5] - intersection, 1e-7f);
+}
+
 __global__ void rotated_nms_cuda_kernel(const float* boxes,
                                         const int64_t* order,
                                         bool* suppressed,
@@ -212,7 +223,7 @@ __global__ void rotated_nms_cuda_kernel(const float* boxes,
       }
       const int64_t idx_b = order[j];
       const float* box_b = boxes + idx_b * 7;
-      const float iou = oriented_iou_single(box_a, box_b);
+      const float iou = suppression_iou(box_a, box_b);
       if (iou > iou_threshold) {
         suppressed[j] = true;
       }
@@ -277,7 +288,7 @@ __global__ void rotated_nms_cuda_batched_kernel(const float* boxes,
         continue;
       }
       const float* box_b = boxes + candidate * 7;
-      if (oriented_iou_single(box_a, box_b) > iou_threshold) {
+      if (suppression_iou(box_a, box_b) > iou_threshold) {
         suppressed[candidate] = true;
       }
     }

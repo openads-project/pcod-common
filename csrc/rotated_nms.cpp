@@ -156,6 +156,20 @@ torch::Tensor rotated_nms(torch::Tensor boxes, torch::Tensor scores, double iou_
     bool suppress = false;
     for (int64_t kept_idx : keep) {
       float iou = oriented_iou(boxes_cpu[idx], boxes_cpu[kept_idx]);
+      const auto a = boxes_cpu[idx];
+      const auto b = boxes_cpu[kept_idx];
+      const float ha = a[5].item<float>();
+      const float hb = b[5].item<float>();
+      if (ha > 0 && hb > 0) {
+        const float aa = a[3].item<float>() * a[4].item<float>();
+        const float ab = b[3].item<float>() * b[4].item<float>();
+        const float za = a[2].item<float>();
+        const float zb = b[2].item<float>();
+        const float inter_h =
+            std::max(0.0f, std::min(za + ha / 2, zb + hb / 2) - std::max(za - ha / 2, zb - hb / 2));
+        const float inter = iou * (aa + ab) / (1 + iou) * inter_h;
+        iou = inter / std::max(aa * ha + ab * hb - inter, 1e-7f);
+      }
       if (iou > static_cast<float>(iou_threshold)) {
         suppress = true;
         break;

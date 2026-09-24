@@ -8,9 +8,9 @@ from __future__ import annotations
 from typing import List, Sequence, Tuple
 
 import torch
-from torchvision.ops import nms
-
+from pcod_common.box_ops import aligned_box_iou
 from pcod_common.torch_extensions.rotated_nms import load_rotated_nms_extension
+from torchvision.ops import nms
 
 _ROTATED_NMS_EXT = None
 
@@ -135,7 +135,8 @@ def _nms_rotated_torch(
     for idx in order.tolist():
         suppress = False
         for kept_idx in keep:
-            iou = _oriented_iou_torch(boxes_xywlh[idx], boxes_xywlh[kept_idx])
+            pair = boxes_xywlh[[idx, kept_idx]]
+            iou = aligned_box_iou(pair[:1], pair[1:], three_d=bool((pair[:, 5] > 0).all()))[0]
             if iou > iou_threshold:
                 suppress = True
                 break
@@ -273,10 +274,7 @@ def apply_nms_batch(
         raise ValueError("boxes_batch, scores_batch, and labels_batch must have equal lengths")
     if not boxes_batch:
         return []
-    if (
-        not use_rotated
-        or not all(boxes.is_cuda and scores.is_cuda for boxes, scores in zip(boxes_batch, scores_batch))
-    ):
+    if not use_rotated or not all(boxes.is_cuda and scores.is_cuda for boxes, scores in zip(boxes_batch, scores_batch)):
         return [
             apply_nms(
                 boxes,
@@ -320,26 +318,19 @@ def apply_nms_batch(
         torch.full((scores.numel(),), sample_idx, device=device, dtype=torch.long)
         for sample_idx, scores in enumerate(scores_batch)
     ]
-    original_chunks = [
-        torch.arange(scores.numel(), device=device, dtype=torch.long) for scores in scores_batch
-    ]
+    original_chunks = [torch.arange(scores.numel(), device=device, dtype=torch.long) for scores in scores_batch]
     flat_boxes_input = torch.cat(list(boxes_batch), dim=0)
     flat_scores_input = torch.cat(list(scores_batch), dim=0)
     flat_labels_input = torch.cat(list(labels_batch), dim=0)
     flat_sample_input = torch.cat(sample_chunks, dim=0)
     flat_original_input = torch.cat(original_chunks, dim=0)
     if flat_scores_input.numel() == 0:
-        return [(boxes[:0], scores[:0], labels[:0]) for boxes, scores, labels in zip(
-            boxes_batch, scores_batch, labels_batch
-        )]
+        return [(boxes[:0], scores[:0], labels[:0]) for boxes, scores, labels in zip(boxes_batch, scores_batch, labels_batch)]
 
     num_classes = len(score_thresholds)
     thresholds = flat_scores_input.new_tensor(score_thresholds)
     valid_labels = (flat_labels_input >= 0) & (flat_labels_input < num_classes)
-    keep = valid_labels & (
-        flat_scores_input
-        >= thresholds[flat_labels_input.clamp(min=0, max=max(num_classes - 1, 0))]
-    )
+    keep = valid_labels & (flat_scores_input >= thresholds[flat_labels_input.clamp(min=0, max=max(num_classes - 1, 0))])
     flat_boxes_input = flat_boxes_input[keep]
     flat_scores_input = flat_scores_input[keep]
     flat_labels_input = flat_labels_input[keep]
@@ -347,9 +338,7 @@ def apply_nms_batch(
     flat_original_input = flat_original_input[keep]
 
     group_ids = flat_sample_input * num_classes + flat_labels_input
-    group_counts = torch.bincount(
-        group_ids, minlength=len(boxes_batch) * num_classes
-    ).cpu().tolist()
+    group_counts = torch.bincount(group_ids, minlength=len(boxes_batch) * num_classes).cpu().tolist()
     group_order = torch.argsort(group_ids, stable=True)
     flat_boxes_input = flat_boxes_input[group_order]
     flat_scores_input = flat_scores_input[group_order]
@@ -391,18 +380,14 @@ def apply_nms_batch(
     flat_original = torch.cat(sorted_original_chunks, dim=0)
     flat_sample_ids = torch.cat(sample_id_chunks, dim=0)
     offsets = torch.tensor(group_offsets, device=flat_boxes.device, dtype=torch.long)
-    selected = ext.rotated_nms_cuda_batched(
-        flat_boxes, offsets, iou_threshold, max_num_objects
-    )
+    selected = ext.rotated_nms_cuda_batched(flat_boxes, offsets, iou_threshold, max_num_objects)
     kept_original = flat_original[selected]
     kept_sample_ids = flat_sample_ids[selected]
     counts = torch.bincount(kept_sample_ids, minlength=len(boxes_batch)).cpu().tolist()
     per_sample_kept = kept_original.split(counts)
 
     results: List[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]] = []
-    for boxes, scores, labels, keep in zip(
-        boxes_batch, scores_batch, labels_batch, per_sample_kept
-    ):
+    for boxes, scores, labels, keep in zip(boxes_batch, scores_batch, labels_batch, per_sample_kept):
         if not per_class_topk and keep.numel() > max_num_objects:
             order = scores[keep].argsort(descending=True)[:max_num_objects]
             keep = keep[order]

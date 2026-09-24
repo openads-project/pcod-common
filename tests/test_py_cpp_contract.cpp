@@ -3,6 +3,8 @@
 
 #include "pcod_common/model_manifest.hpp"
 #include "pcod_common/nms.hpp"
+#include "pcod_common/pbod_postprocess.hpp"
+#include "pcod_common/pillar_grid.hpp"
 #include "pcod_common/version.hpp"
 
 #include <cassert>
@@ -246,6 +248,64 @@ int main() {
         assert(std::abs(py_kept_x[i] - cpp_kept_x[i]) < 1e-5f);
       }
     }
+  }
+
+  {
+    pcod_common::PillarGrid grid;
+    grid.centers = {0.5F, 0.5F, 0.0F};
+    float reg[14] = {};
+    reg[7] = 0.25F;
+    reg[10] = 0.5F;
+    float focal[1] = {2.0F};
+    float classes[2] = {-2.0F, -1.0F};
+    float sizes[6] = {1.0F, 1.0F, 1.0F, 2.0F, 3.0F, 4.0F};
+    pcod_common::PbodOutputsView view;
+    view.reg_logits = reg;
+    view.focal_logits = focal;
+    view.class_logits = classes;
+    view.size_posterior = sizes;
+    view.num_pillars = 1;
+    view.num_classes = 2;
+    view.reg_dim = 7;
+    pcod_common::PbodPostprocessConfig cfg;
+    auto decoded = pcod_common::DecodePbod(view, grid, cfg);
+    assert(decoded.size() == 1);
+    const auto python = RunCommandCapture(py_prefix +
+        "import torch; from pcod_common.box_ops import decode_pbod; "
+        "r=torch.zeros(1,1,14); r[0,0,7]=.25; r[0,0,10]=.5; "
+        "_,b,s=decode_pbod(r,torch.tensor([[[2.]]]),torch.tensor([[[-2.,-1.]]]),"
+        "torch.tensor([[[1.,1.,1.,2.,3.,4.]]]),torch.tensor([[[.5,.5,0.]]])); "
+        "print(','.join(str(float(v)) for v in [b[0,0],b[0,3],b[0,4],b[0,5],s[0]]))\"");
+    assert(python.exit_code == 0);
+    const auto values = ParseCsvFloats(python.stdout_text);
+    const auto& box = decoded.front();
+    const std::vector<float> expected{box.center[0], box.length, box.width, box.height, box.existence_probability};
+    assert(values.size() == expected.size());
+    for (std::size_t i = 0; i < values.size(); ++i) {
+      assert(std::abs(values[i] - expected[i]) < 1e-5F);
+    }
+  }
+  {
+    std::vector<pcod_common::BoundingBox> boxes;
+    for (int i = 0; i < 4; ++i) {
+      pcod_common::BoundingBox box;
+      box.center = {0.0F, 0.0F};
+      box.z = i == 1 ? 3.0F : 0.0F;
+      box.length = 2.0F;
+      box.width = 1.0F;
+      box.height = 1.0F;
+      box.existence_probability = 0.9F - 0.1F * i;
+      box.classification = {{0, i == 2 ? -2.0F : -1.0F}, {1, i == 2 ? -1.0F : -2.0F}};
+      boxes.push_back(box);
+    }
+    pcod_common::NmsConfig cfg;
+    cfg.score_thresholds = {0.1F, 0.1F};
+    cfg.iou_threshold = 0.5F;
+    pcod_common::ApplyRotatedNms(boxes, cfg);
+    assert(boxes.size() == 3);
+    assert(std::abs(boxes[0].existence_probability - .9F) < 1e-6F);
+    assert(std::abs(boxes[1].z - 3.0F) < 1e-6F);
+    assert(std::abs(boxes[2].existence_probability - .7F) < 1e-6F);
   }
 
   return 0;

@@ -9,8 +9,8 @@
 
 namespace {
 
-/** Build a scored bounding box whose z coordinate stores the test index.
- * @param idx Test index stored in the box z coordinate.
+/** Build a scored bounding box whose unused velocity field stores the test index.
+ * @param idx Test index stored in the unused velocity field.
  * @param x Box center X.
  * @param y Box center Y.
  * @param length Box length.
@@ -22,7 +22,8 @@ namespace {
 pcod_common::BoundingBox MakeBox(std::size_t idx, float x, float y, float length, float width, float yaw, float score) {
   pcod_common::BoundingBox box;
   box.center = {x, y};
-  box.z = static_cast<float>(idx);
+  box.z = 0.0f;
+  box.v_x = static_cast<float>(idx);
   box.length = length;
   box.width = width;
   box.height = 1.0f;
@@ -51,7 +52,7 @@ void RunNmsCase(std::vector<pcod_common::BoundingBox> boxes,
 
   assert(boxes.size() == expected_indices.size());
   for (std::size_t i = 0; i < expected_indices.size(); ++i) {
-    assert(static_cast<std::size_t>(std::lround(boxes[i].z)) == expected_indices[i]);
+    assert(static_cast<std::size_t>(std::lround(boxes[i].v_x)) == expected_indices[i]);
   }
 }
 
