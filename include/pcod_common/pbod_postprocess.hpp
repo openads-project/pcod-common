@@ -19,13 +19,14 @@ struct PbodPostprocessConfig {
 
 /** Non-owning view over the dense tensors emitted by a PBOD head. */
 struct PbodOutputsView {
-  const float* focal_logits = nullptr;    ///< Shape `[num_pillars]`.
-  const float* size_posterior = nullptr;  ///< Shape `[num_pillars, num_classes * 3]`.
-  const float* class_logits = nullptr;    ///< Shape `[num_pillars, num_classes]`.
-  const float* reg_logits = nullptr;      ///< Shape `[num_pillars, num_classes * reg_dim]`.
-  int num_pillars = 0;                    ///< Number of spatial pillars.
-  int num_classes = 0;                    ///< Number of semantic classes.
-  int reg_dim = 0;                        ///< Regression values per pillar and class.
+  const float* focal_logits = nullptr;       ///< Quality-weighted presence logits, shape `[num_pillars]`.
+  const float* objectness_logits = nullptr;  ///< Presence logits, shape `[num_pillars]`.
+  const float* size_posterior = nullptr;     ///< Shape `[num_pillars, num_classes * 3]`.
+  const float* class_logits = nullptr;       ///< Shape `[num_pillars, num_classes]`.
+  const float* reg_logits = nullptr;         ///< Shape `[num_pillars, num_classes * reg_dim]`.
+  int num_pillars = 0;                       ///< Number of spatial pillars.
+  int num_classes = 0;                       ///< Number of semantic classes.
+  int reg_dim = 0;                           ///< Regression values per pillar and class.
 };
 
 /** Decode PBOD tensors into oriented boxes.

@@ -262,6 +262,7 @@ int main() {
     pcod_common::PbodOutputsView view;
     view.reg_logits = reg;
     view.focal_logits = focal;
+    view.objectness_logits = focal;
     view.class_logits = classes;
     view.size_posterior = sizes;
     view.num_pillars = 1;
@@ -282,7 +283,9 @@ int main() {
       assert(python.exit_code == 0);
       const auto values = ParseCsvFloats(python.stdout_text);
       const auto& box = decoded.front();
-      const std::vector<float> expected{box.center[0], box.length, box.width, box.height, box.existence_probability};
+      assert(box.detection_score.has_value());
+      assert(std::abs(box.existence_probability - 0.880797F) < 1e-5F);
+      const std::vector<float> expected{box.center[0], box.length, box.width, box.height, *box.detection_score};
       assert(values.size() == expected.size());
       for (std::size_t i = 0; i < values.size(); ++i) {
         assert(std::abs(values[i] - expected[i]) < 1e-5F);

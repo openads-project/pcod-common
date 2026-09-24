@@ -92,9 +92,12 @@ preprocessor = PillarPreprocessor(config)
 Its tensor inputs have a leading sample dimension; use size 1 for a single sample.
 Each output box has eight values: `(x, y, z, length, width, height, yaw, class_index)`.
 The decoder selects the best class per cell and computes its score as
-`sigmoid(focal_logit) * softmax(class_logits)[class_index]`.
-C++ `DecodePbod` handles one set of pillars, selects one class per pillar, and stores this score in
-`existence_probability`.
+`sigmoid(focal_logit) * softmax(class_logits)[class_index]`. Here `focal_logit`
+contains presence multiplied by predicted localization quality.
+C++ `DecodePbod` handles one set of pillars and selects one class per pillar. It requires
+separate `objectness_logits`, stores their sigmoid in `existence_probability`, and stores the
+quality- and class-weighted ranking score in `detection_score`.
+NMS filters and ranks boxes by `detection_score` when it is available.
 
 `pcod_common.box_ops.aligned_box_iou` computes differentiable rotated IoU for corresponding box pairs
 in `(x, y, z, length, width, height, yaw)` format. It uses 3D overlap by default; pass `three_d=False`
@@ -206,6 +209,7 @@ int main() {
   const int num_pillars = 4;
   const int num_classes = 2;
   float focal_logits[num_pillars] = {2.0f, -2.0f, 2.0f, -2.0f};
+  float objectness_logits[num_pillars] = {3.0f, 0.0f, 3.0f, 0.0f};
   float class_logits[num_pillars * num_classes] = {
       0.1f, 0.9f, 0.1f, 0.9f, 0.1f, 0.9f, 0.1f, 0.9f};
   std::vector<float> size_posterior(num_pillars * num_classes * 3, 1.0f);
@@ -213,6 +217,7 @@ int main() {
 
   pcod_common::PbodOutputsView view;
   view.focal_logits = focal_logits;
+  view.objectness_logits = objectness_logits;
   view.size_posterior = size_posterior.data();
   view.class_logits = class_logits;
   view.reg_logits = reg_logits.data();

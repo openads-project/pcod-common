@@ -23,8 +23,8 @@ std::vector<float> CopyTensorView(const float* values, std::size_t count) {
 
 std::vector<BoundingBox> DecodePbod(const PbodOutputsView& outputs, const PillarGrid& grid, const PbodPostprocessConfig& config) {
   std::vector<BoundingBox> objects;
-  if (outputs.focal_logits == nullptr || outputs.size_posterior == nullptr || outputs.class_logits == nullptr ||
-      outputs.reg_logits == nullptr) {
+  if (outputs.focal_logits == nullptr || outputs.objectness_logits == nullptr || outputs.size_posterior == nullptr ||
+      outputs.class_logits == nullptr || outputs.reg_logits == nullptr) {
     throw std::invalid_argument("DecodePbod requires non-null output tensor pointers.");
   }
   if (outputs.num_pillars <= 0 || outputs.num_classes <= 0) {
@@ -43,6 +43,7 @@ std::vector<BoundingBox> DecodePbod(const PbodOutputsView& outputs, const Pillar
   const std::size_t reg_dim_size = static_cast<std::size_t>(reg_dim);
 
   const std::vector<float> focal_logits = CopyTensorView(outputs.focal_logits, num_pillars);
+  const std::vector<float> objectness_logits = CopyTensorView(outputs.objectness_logits, num_pillars);
   const std::vector<float> size_posterior = CopyTensorView(outputs.size_posterior, num_pillars * num_classes * 3U);
   const std::vector<float> class_logits = CopyTensorView(outputs.class_logits, num_pillars * num_classes);
   const std::vector<float> reg_logits = CopyTensorView(outputs.reg_logits, num_pillars * num_classes * reg_dim_size);
@@ -50,7 +51,8 @@ std::vector<BoundingBox> DecodePbod(const PbodOutputsView& outputs, const Pillar
   objects.reserve(static_cast<std::size_t>(outputs.num_pillars));
   for (int idx = 0; idx < outputs.num_pillars; ++idx) {
     const std::size_t pillar_idx = static_cast<std::size_t>(idx);
-    const float objectness = sigmoid(focal_logits[pillar_idx]);
+    const float quality_weighted_presence = sigmoid(focal_logits[pillar_idx]);
+    const float objectness = sigmoid(objectness_logits[pillar_idx]);
 
     int best_class = 0;
     const std::size_t class_base = pillar_idx * num_classes;
@@ -67,8 +69,8 @@ std::vector<BoundingBox> DecodePbod(const PbodOutputsView& outputs, const Pillar
     for (int c = 0; c < outputs.num_classes; ++c) {
       class_denom += std::exp(class_logits[class_base + static_cast<std::size_t>(c)] - best_logit);
     }
-    const float score = objectness / class_denom;
-    if (!std::isfinite(score)) {
+    const float score = quality_weighted_presence / class_denom;
+    if (!std::isfinite(score) || !std::isfinite(objectness)) {
       continue;
     }
     float score_thresh = 0.0F;
@@ -104,7 +106,8 @@ std::vector<BoundingBox> DecodePbod(const PbodOutputsView& outputs, const Pillar
       const std::size_t current_class = static_cast<std::size_t>(c);
       box.classification.push_back({current_class, class_logits[class_base + current_class]});
     }
-    box.existence_probability = score;
+    box.existence_probability = objectness;
+    box.detection_score = score;
 
     objects.push_back(std::move(box));
   }

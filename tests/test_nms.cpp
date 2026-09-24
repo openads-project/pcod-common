@@ -86,6 +86,21 @@ int main() {
   }
 
   {
+    pcod_common::BoundingBox box_a = MakeBox(0, 0.0f, 0.0f, 4.0f, 2.0f, 0.0f, 0.9f);
+    box_a.detection_score = 0.6f;
+    pcod_common::BoundingBox box_b = MakeBox(1, 0.0f, 0.0f, 4.0f, 2.0f, 0.0f, 0.7f);
+    box_b.detection_score = 0.8f;
+    std::vector<pcod_common::BoundingBox> boxes{box_a, box_b};
+    pcod_common::NmsConfig config;
+    config.score_thresholds = {0.5f};
+    config.iou_threshold = 0.1f;
+    pcod_common::ApplyRotatedNms(boxes, config);
+    assert(boxes.size() == 1);
+    assert(std::abs(boxes[0].existence_probability - 0.7f) < 1e-6f);
+    assert(std::abs(*boxes[0].detection_score - 0.8f) < 1e-6f);
+  }
+
+  {
     RunNmsCase(
         {
             MakeBox(0, 0.0f, 0.0f, 4.0f, 2.0f, 0.0f, 0.9f),

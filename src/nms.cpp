@@ -37,7 +37,7 @@ void ApplyRotatedNms(std::vector<BoundingBox>& bboxes, const NmsConfig& config) 
     if (!config.score_thresholds.empty()) {
       class_thresh = config.score_thresholds[std::min(max_class_idx, config.score_thresholds.size() - 1)];
     }
-    const float score = bbox.existence_probability;
+    const float score = bbox.detection_score.value_or(bbox.existence_probability);
     if (score < class_thresh) {
       continue;
     }
