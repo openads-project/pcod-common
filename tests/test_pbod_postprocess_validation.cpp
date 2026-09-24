@@ -59,6 +59,19 @@ int main() {
     bad_view.reg_logits = reg_logits;
     bad_view.num_pillars = 1;
     bad_view.num_classes = 1;
+    bad_view.reg_dim = 7;
+    assert(ExpectInvalidArgument([&]() { (void)DecodePbod(bad_view, grid, config); }));
+  }
+
+  {
+    PbodOutputsView bad_view;
+    bad_view.focal_logits = focal_logits;
+    bad_view.objectness_logits = focal_logits;
+    bad_view.class_logits = class_logits;
+    bad_view.size_posterior = size_posterior;
+    bad_view.reg_logits = reg_logits;
+    bad_view.num_pillars = 1;
+    bad_view.num_classes = 1;
     bad_view.reg_dim = 6;
     assert(ExpectInvalidArgument([&]() { (void)DecodePbod(bad_view, grid, config); }));
   }
@@ -66,6 +79,7 @@ int main() {
   {
     PbodOutputsView good_view;
     good_view.focal_logits = focal_logits;
+    good_view.objectness_logits = focal_logits;
     good_view.class_logits = class_logits;
     good_view.size_posterior = size_posterior;
     good_view.reg_logits = reg_logits;

@@ -4,6 +4,7 @@
 #pragma once
 
 #include <array>
+#include <optional>
 #include <vector>
 
 namespace pcod_common {
@@ -67,7 +68,8 @@ struct BoundingBox {
   float width = 0.0f;                               ///< Width along the local Y axis.
   float height = 0.0f;                              ///< Height along the Z axis.
   float yaw = 0.0f;                                 ///< Heading in radians.
-  float existence_probability = 0.0f;               ///< Detection confidence.
+  float existence_probability = 0.0f;               ///< Probability that an object exists, independent of class.
+  std::optional<float> detection_score;             ///< Class-weighted score for filtering and NMS, if available.
   std::vector<ClassificationEntry> classification;  ///< Ranked semantic predictions.
   bool has_velocity = false;                        ///< Whether velocity components are valid.
   float v_x = 0.0f;                                 ///< X velocity when @ref has_velocity is true.

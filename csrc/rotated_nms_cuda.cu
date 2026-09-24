@@ -163,6 +163,16 @@ __device__ __forceinline__ float oriented_iou_single(const float* box_a, const f
   return inter_area / uni;
 }
 
+// NMS compares 3D boxes; retain BEV semantics for legacy zero-height inputs.
+__device__ __forceinline__ float suppression_iou(const float* a, const float* b) {
+  const float bev = oriented_iou_single(a, b);
+  if (a[5] <= 0.0f || b[5] <= 0.0f) return bev;
+  const float area = bev * (a[3] * a[4] + b[3] * b[4]) / (1.0f + bev);
+  const float height = fmaxf(0.0f, fminf(a[2] + a[5] * .5f, b[2] + b[5] * .5f) - fmaxf(a[2] - a[5] * .5f, b[2] - b[5] * .5f));
+  const float intersection = area * height;
+  return intersection / fmaxf(a[3] * a[4] * a[5] + b[3] * b[4] * b[5] - intersection, 1e-7f);
+}
+
 __global__ void rotated_nms_cuda_kernel(const float* boxes,
                                         const int64_t* order,
                                         bool* suppressed,
@@ -212,9 +222,73 @@ __global__ void rotated_nms_cuda_kernel(const float* boxes,
       }
       const int64_t idx_b = order[j];
       const float* box_b = boxes + idx_b * 7;
-      const float iou = oriented_iou_single(box_a, box_b);
+      const float iou = suppression_iou(box_a, box_b);
       if (iou > iou_threshold) {
         suppressed[j] = true;
+      }
+    }
+  }
+}
+
+// Run independent, already score-sorted NMS groups concurrently.  Each block owns
+// one sample/class segment, preserving the exact greedy order of the single-group
+// kernel while avoiding hundreds of serial kernel launches for a training batch.
+__global__ void rotated_nms_cuda_batched_kernel(const float* boxes,
+                                                const int64_t* group_offsets,
+                                                bool* suppressed,
+                                                bool* selected,
+                                                int64_t num_groups,
+                                                float iou_threshold,
+                                                int64_t max_output) {
+  const int64_t group = blockIdx.x;
+  if (group >= num_groups) {
+    return;
+  }
+  const int64_t begin = group_offsets[group];
+  const int64_t end = group_offsets[group + 1];
+  const int64_t num_boxes = end - begin;
+
+  __shared__ int64_t kept;
+  __shared__ int keep_current;
+  __shared__ int stop;
+  if (threadIdx.x == 0) {
+    kept = 0;
+  }
+  __syncthreads();
+
+  for (int64_t sorted_idx = 0; sorted_idx < num_boxes; ++sorted_idx) {
+    __syncthreads();
+    if (threadIdx.x == 0) {
+      stop = kept >= max_output;
+    }
+    __syncthreads();
+    if (stop) {
+      break;
+    }
+
+    const int64_t current = begin + sorted_idx;
+    const bool is_suppressed = suppressed[current];
+    if (threadIdx.x == 0) {
+      keep_current = (!is_suppressed && kept < max_output) ? 1 : 0;
+      if (keep_current) {
+        selected[current] = true;
+        ++kept;
+      }
+    }
+    __syncthreads();
+    if (!keep_current) {
+      continue;
+    }
+
+    const float* box_a = boxes + current * 7;
+    for (int64_t j = sorted_idx + 1 + threadIdx.x; j < num_boxes; j += blockDim.x) {
+      const int64_t candidate = begin + j;
+      if (suppressed[candidate]) {
+        continue;
+      }
+      const float* box_b = boxes + candidate * 7;
+      if (suppression_iou(box_a, box_b) > iou_threshold) {
+        suppressed[candidate] = true;
       }
     }
   }
@@ -264,6 +338,38 @@ torch::Tensor rotated_nms_cuda(torch::Tensor boxes, torch::Tensor scores, double
     keep = keep.slice(0, 0, max_out);
   }
   return keep;
+}
+
+torch::Tensor rotated_nms_cuda_batched(torch::Tensor sorted_boxes,
+                                       torch::Tensor group_offsets,
+                                       double iou_threshold,
+                                       int64_t max_out) {
+  TORCH_CHECK(sorted_boxes.is_cuda(), "rotated_nms_cuda_batched expects CUDA boxes");
+  TORCH_CHECK(group_offsets.is_cuda(), "rotated_nms_cuda_batched expects CUDA offsets");
+  TORCH_CHECK(sorted_boxes.dim() == 2 && sorted_boxes.size(1) == 7, "boxes must be [N,7]");
+  TORCH_CHECK(group_offsets.dim() == 1, "group_offsets must be one-dimensional");
+  TORCH_CHECK(group_offsets.scalar_type() == torch::kLong, "group_offsets must be int64");
+
+  auto boxes_contig = sorted_boxes.contiguous();
+  if (boxes_contig.scalar_type() != torch::kFloat) {
+    boxes_contig = boxes_contig.to(torch::kFloat);
+  }
+  auto offsets_contig = group_offsets.contiguous();
+  const auto num_boxes = boxes_contig.size(0);
+  const auto num_groups = std::max<int64_t>(offsets_contig.size(0) - 1, 0);
+  auto selected = torch::zeros({num_boxes}, sorted_boxes.options().dtype(torch::kBool));
+  if (num_boxes == 0 || num_groups == 0 || max_out <= 0) {
+    return selected;
+  }
+
+  auto suppressed = torch::zeros({num_boxes}, sorted_boxes.options().dtype(torch::kBool));
+  const int threads = 512;
+  auto stream = at::cuda::getCurrentCUDAStream();
+  rotated_nms_cuda_batched_kernel<<<num_groups, threads, 0, stream>>>(
+      boxes_contig.data_ptr<float>(), offsets_contig.data_ptr<int64_t>(), suppressed.data_ptr<bool>(), selected.data_ptr<bool>(),
+      num_groups, static_cast<float>(iou_threshold), max_out);
+  C10_CUDA_KERNEL_LAUNCH_CHECK();
+  return selected;
 }
 
 __global__ void oriented_iou_aligned_kernel(const float* boxes_a, const float* boxes_b, float* ious, int64_t num_boxes) {

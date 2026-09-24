@@ -23,6 +23,7 @@ int main() {
 
     pcod_common::PbodOutputsView view;
     view.focal_logits = focal_logits;
+    view.objectness_logits = focal_logits;
     view.size_posterior = size_posterior.data();
     view.class_logits = class_logits;
     view.reg_logits = reg_logits.data();
@@ -73,6 +74,8 @@ int main() {
 
     pcod_common::PbodOutputsView view;
     view.focal_logits = focal_logits;
+    float objectness_logits[num_pillars] = {2.0F, 0.0F};
+    view.objectness_logits = objectness_logits;
     view.size_posterior = size_posterior.data();
     view.class_logits = class_logits.data();
     view.reg_logits = reg_logits.data();
@@ -82,14 +85,16 @@ int main() {
 
     pcod_common::PbodPostprocessConfig config;
     config.class_names = {"car", "pedestrian"};
-    config.score_thresholds = {0.4F, 0.8F};
+    config.score_thresholds = {0.3F, 0.6F};
 
     auto boxes = pcod_common::DecodePbod(view, grid, config);
     assert(boxes.size() == 2);
 
     const auto& first = boxes[0];
     assert(first.classification[0].class_idx == 0);
-    assert(std::abs(first.existence_probability - 0.5F) < 1e-6F);
+    assert(std::abs(first.existence_probability - 0.880797F) < 1e-5F);
+    assert(first.detection_score.has_value());
+    assert(std::abs(*first.detection_score - 0.5F / (1.0F + std::exp(-0.5F))) < 1e-6F);
     assert(std::abs(first.length - 2.0F) < 1e-6F);
     assert(std::abs(first.width - 1.0F) < 1e-6F);
     assert(std::abs(first.height - 4.5F) < 1e-6F);
@@ -100,7 +105,9 @@ int main() {
 
     const auto& second = boxes[1];
     assert(second.classification[1].class_idx == 1);
-    assert(std::abs(second.existence_probability - 0.880797F) < 1e-5F);
+    assert(std::abs(second.existence_probability - 0.5F) < 1e-6F);
+    assert(second.detection_score.has_value());
+    assert(std::abs(*second.detection_score - 0.880797F / (1.0F + std::exp(-1.1F))) < 1e-5F);
     assert(std::abs(second.length - 5.0F) < 1e-6F);
     assert(std::abs(second.width - 22.0F) < 1e-6F);
     assert(std::abs(second.height - 12.0F) < 1e-6F);

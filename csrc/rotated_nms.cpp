@@ -9,6 +9,10 @@
 #include <vector>
 
 torch::Tensor rotated_nms_cuda(torch::Tensor boxes, torch::Tensor scores, double iou_threshold, int64_t max_out);
+torch::Tensor rotated_nms_cuda_batched(torch::Tensor sorted_boxes,
+                                       torch::Tensor group_offsets,
+                                       double iou_threshold,
+                                       int64_t max_out);
 torch::Tensor oriented_iou_aligned_cuda(torch::Tensor boxes_a, torch::Tensor boxes_b);
 
 namespace {
@@ -154,6 +158,19 @@ torch::Tensor rotated_nms(torch::Tensor boxes, torch::Tensor scores, double iou_
     bool suppress = false;
     for (int64_t kept_idx : keep) {
       float iou = oriented_iou(boxes_cpu[idx], boxes_cpu[kept_idx]);
+      const auto a = boxes_cpu[idx];
+      const auto b = boxes_cpu[kept_idx];
+      const float ha = a[5].item<float>();
+      const float hb = b[5].item<float>();
+      if (ha > 0 && hb > 0) {
+        const float aa = a[3].item<float>() * a[4].item<float>();
+        const float ab = b[3].item<float>() * b[4].item<float>();
+        const float za = a[2].item<float>();
+        const float zb = b[2].item<float>();
+        const float inter_h = std::max(0.0f, std::min(za + ha / 2, zb + hb / 2) - std::max(za - ha / 2, zb - hb / 2));
+        const float inter = iou * (aa + ab) / (1 + iou) * inter_h;
+        iou = inter / std::max(aa * ha + ab * hb - inter, 1e-7f);
+      }
       if (iou > static_cast<float>(iou_threshold)) {
         suppress = true;
         break;
@@ -188,6 +205,7 @@ torch::Tensor oriented_iou_aligned(torch::Tensor boxes_a, torch::Tensor boxes_b)
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("rotated_nms", &rotated_nms, "Rotated NMS (CPU)");
   m.def("rotated_nms_cuda", &rotated_nms_cuda, "Rotated NMS (CUDA)");
+  m.def("rotated_nms_cuda_batched", &rotated_nms_cuda_batched, "Batched rotated NMS (CUDA)");
   m.def("oriented_iou_aligned", &oriented_iou_aligned, "Aligned oriented IoU (CPU)");
   m.def("oriented_iou_aligned_cuda", &oriented_iou_aligned_cuda, "Aligned oriented IoU (CUDA)");
 }
