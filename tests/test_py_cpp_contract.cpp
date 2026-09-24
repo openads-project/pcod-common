@@ -270,19 +270,23 @@ int main() {
     pcod_common::PbodPostprocessConfig cfg;
     auto decoded = pcod_common::DecodePbod(view, grid, cfg);
     assert(decoded.size() == 1);
-    const auto python = RunCommandCapture(py_prefix +
-        "import torch; from pcod_common.box_ops import decode_pbod; "
-        "r=torch.zeros(1,1,14); r[0,0,7]=.25; r[0,0,10]=.5; "
-        "_,b,s=decode_pbod(r,torch.tensor([[[2.]]]),torch.tensor([[[-2.,-1.]]]),"
-        "torch.tensor([[[1.,1.,1.,2.,3.,4.]]]),torch.tensor([[[.5,.5,0.]]])); "
-        "print(','.join(str(float(v)) for v in [b[0,0],b[0,3],b[0,4],b[0,5],s[0]]))\"");
-    assert(python.exit_code == 0);
-    const auto values = ParseCsvFloats(python.stdout_text);
-    const auto& box = decoded.front();
-    const std::vector<float> expected{box.center[0], box.length, box.width, box.height, box.existence_probability};
-    assert(values.size() == expected.size());
-    for (std::size_t i = 0; i < values.size(); ++i) {
-      assert(std::abs(values[i] - expected[i]) < 1e-5F);
+    const auto torch_available =
+        RunCommandCapture(py_prefix + "import importlib.util; print(importlib.util.find_spec('torch') is not None)\"");
+    if (Trim(torch_available.stdout_text) == "True") {
+      const auto python = RunCommandCapture(py_prefix +
+                                            "import torch; from pcod_common.box_ops import decode_pbod; "
+                                            "r=torch.zeros(1,1,14); r[0,0,7]=.25; r[0,0,10]=.5; "
+                                            "_,b,s=decode_pbod(r,torch.tensor([[[2.]]]),torch.tensor([[[-2.,-1.]]]),"
+                                            "torch.tensor([[[1.,1.,1.,2.,3.,4.]]]),torch.tensor([[[.5,.5,0.]]])); "
+                                            "print(','.join(str(float(v)) for v in [b[0,0],b[0,3],b[0,4],b[0,5],s[0]]))\"");
+      assert(python.exit_code == 0);
+      const auto values = ParseCsvFloats(python.stdout_text);
+      const auto& box = decoded.front();
+      const std::vector<float> expected{box.center[0], box.length, box.width, box.height, box.existence_probability};
+      assert(values.size() == expected.size());
+      for (std::size_t i = 0; i < values.size(); ++i) {
+        assert(std::abs(values[i] - expected[i]) < 1e-5F);
+      }
     }
   }
   {

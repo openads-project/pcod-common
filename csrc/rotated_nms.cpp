@@ -9,8 +9,10 @@
 #include <vector>
 
 torch::Tensor rotated_nms_cuda(torch::Tensor boxes, torch::Tensor scores, double iou_threshold, int64_t max_out);
-torch::Tensor rotated_nms_cuda_batched(torch::Tensor sorted_boxes, torch::Tensor group_offsets,
-                                       double iou_threshold, int64_t max_out);
+torch::Tensor rotated_nms_cuda_batched(torch::Tensor sorted_boxes,
+                                       torch::Tensor group_offsets,
+                                       double iou_threshold,
+                                       int64_t max_out);
 torch::Tensor oriented_iou_aligned_cuda(torch::Tensor boxes_a, torch::Tensor boxes_b);
 
 namespace {
@@ -165,8 +167,7 @@ torch::Tensor rotated_nms(torch::Tensor boxes, torch::Tensor scores, double iou_
         const float ab = b[3].item<float>() * b[4].item<float>();
         const float za = a[2].item<float>();
         const float zb = b[2].item<float>();
-        const float inter_h =
-            std::max(0.0f, std::min(za + ha / 2, zb + hb / 2) - std::max(za - ha / 2, zb - hb / 2));
+        const float inter_h = std::max(0.0f, std::min(za + ha / 2, zb + hb / 2) - std::max(za - ha / 2, zb - hb / 2));
         const float inter = iou * (aa + ab) / (1 + iou) * inter_h;
         iou = inter / std::max(aa * ha + ab * hb - inter, 1e-7f);
       }

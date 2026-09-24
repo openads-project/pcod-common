@@ -95,9 +95,8 @@ std::vector<BoundingBox> DecodePbod(const PbodOutputsView& outputs, const Pillar
     box.center[1] = reg_logits[reg_offset + 1U] * size_posterior[size_offset + 1U] + grid.centers[center_offset + 1U];
     box.z = reg_logits[reg_offset + 2U] * size_posterior[size_offset + 2U] + grid.centers[center_offset + 2U];
     box.yaw = wrap_to_range(reg_logits[reg_offset + 6U], -static_cast<float>(M_PI), static_cast<float>(M_PI));
-    if (!std::isfinite(box.length) || !std::isfinite(box.width) || !std::isfinite(box.height) ||
-        !std::isfinite(box.yaw) || !std::isfinite(box.center[0]) || !std::isfinite(box.center[1]) ||
-        !std::isfinite(box.z)) {
+    if (!std::isfinite(box.length) || !std::isfinite(box.width) || !std::isfinite(box.height) || !std::isfinite(box.yaw) ||
+        !std::isfinite(box.center[0]) || !std::isfinite(box.center[1]) || !std::isfinite(box.z)) {
       continue;
     }
 

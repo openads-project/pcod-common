@@ -64,9 +64,8 @@ bool BoundingBox::overlaps(const BoundingBox& other, float iou_threshold) const 
   float intersection = intersection_area(other);
   float union_area = length * width + other.length * other.width - intersection;
   if (height > 0 && other.height > 0) {
-    const float overlap_height =
-        std::max(0.0F, std::min(z + height / 2, other.z + other.height / 2) -
-                           std::max(z - height / 2, other.z - other.height / 2));
+    const float overlap_height = std::max(
+        0.0F, std::min(z + height / 2, other.z + other.height / 2) - std::max(z - height / 2, other.z - other.height / 2));
     intersection *= overlap_height;
     union_area = length * width * height + other.length * other.width * other.height - intersection;
   }

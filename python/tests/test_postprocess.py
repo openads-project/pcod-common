@@ -392,8 +392,7 @@ def test_apply_nms_batch_cuda_matches_per_sample_reference(
         "pre_nms_topk": pre_nms_topk,
     }
     expected = [
-        apply_nms(boxes, scores, labels, **kwargs)
-        for boxes, scores, labels in zip(boxes_batch, scores_batch, labels_batch)
+        apply_nms(boxes, scores, labels, **kwargs) for boxes, scores, labels in zip(boxes_batch, scores_batch, labels_batch)
     ]
 
     actual = apply_nms_batch(boxes_batch, scores_batch, labels_batch, **kwargs)

@@ -168,8 +168,7 @@ __device__ __forceinline__ float suppression_iou(const float* a, const float* b)
   const float bev = oriented_iou_single(a, b);
   if (a[5] <= 0.0f || b[5] <= 0.0f) return bev;
   const float area = bev * (a[3] * a[4] + b[3] * b[4]) / (1.0f + bev);
-  const float height = fmaxf(0.0f, fminf(a[2] + a[5] * .5f, b[2] + b[5] * .5f)
-                          - fmaxf(a[2] - a[5] * .5f, b[2] - b[5] * .5f));
+  const float height = fmaxf(0.0f, fminf(a[2] + a[5] * .5f, b[2] + b[5] * .5f) - fmaxf(a[2] - a[5] * .5f, b[2] - b[5] * .5f));
   const float intersection = area * height;
   return intersection / fmaxf(a[3] * a[4] * a[5] + b[3] * b[4] * b[5] - intersection, 1e-7f);
 }
@@ -367,9 +366,8 @@ torch::Tensor rotated_nms_cuda_batched(torch::Tensor sorted_boxes,
   const int threads = 512;
   auto stream = at::cuda::getCurrentCUDAStream();
   rotated_nms_cuda_batched_kernel<<<num_groups, threads, 0, stream>>>(
-      boxes_contig.data_ptr<float>(), offsets_contig.data_ptr<int64_t>(),
-      suppressed.data_ptr<bool>(), selected.data_ptr<bool>(), num_groups,
-      static_cast<float>(iou_threshold), max_out);
+      boxes_contig.data_ptr<float>(), offsets_contig.data_ptr<int64_t>(), suppressed.data_ptr<bool>(), selected.data_ptr<bool>(),
+      num_groups, static_cast<float>(iou_threshold), max_out);
   C10_CUDA_KERNEL_LAUNCH_CHECK();
   return selected;
 }

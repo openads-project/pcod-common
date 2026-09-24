@@ -51,3 +51,6 @@ package-dir = {"" = "python"}
 [tool.setuptools.packages.find]
 where = ["python"]
 exclude = ["tests*"]
+
+[tool.black]
+target-version = ["py312"]

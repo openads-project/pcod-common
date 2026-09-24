@@ -52,8 +52,7 @@ void ApplyRotatedNms(std::vector<BoundingBox>& bboxes, const NmsConfig& config) 
   for (const auto& candidate : scored) {
     bool keep = true;
     for (const auto& kept_box : kept) {
-      if (best_class(*candidate.second) == best_class(kept_box) &&
-          candidate.second->overlaps(kept_box, config.iou_threshold)) {
+      if (best_class(*candidate.second) == best_class(kept_box) && candidate.second->overlaps(kept_box, config.iou_threshold)) {
         keep = false;
         break;
       }
