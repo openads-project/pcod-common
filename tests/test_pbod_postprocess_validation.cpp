@@ -29,6 +29,15 @@ bool ExpectInvalidArgument(const std::function<void()>& fn) {
 
 /** Run PBOD decoder input-validation regression checks. */
 int main() {
+  using pcod_common::ParsePbodScoreMode;
+  using pcod_common::PbodScoreMode;
+  assert(ParsePbodScoreMode("existence") == PbodScoreMode::Existence);
+  assert(ParsePbodScoreMode("existence_quality") == PbodScoreMode::ExistenceQuality);
+  assert(ParsePbodScoreMode("existence_quality_class") == PbodScoreMode::ExistenceQualityClass);
+  for (const auto* invalid : {"", "quality", "Existence", "existence_quality_classes"}) {
+    assert(ExpectInvalidArgument([&]() { (void)ParsePbodScoreMode(invalid); }));
+  }
+
   using pcod_common::BuildPillarGrid;
   using pcod_common::DecodePbod;
   using pcod_common::PbodOutputsView;

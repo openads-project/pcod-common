@@ -21,6 +21,19 @@ std::vector<float> CopyTensorView(const float* values, std::size_t count) {
 }
 }  // namespace
 
+PbodScoreMode ParsePbodScoreMode(const std::string& value) {
+  if (value == "existence") {
+    return PbodScoreMode::Existence;
+  }
+  if (value == "existence_quality") {
+    return PbodScoreMode::ExistenceQuality;
+  }
+  if (value == "existence_quality_class") {
+    return PbodScoreMode::ExistenceQualityClass;
+  }
+  throw std::invalid_argument("PBOD score mode must be one of: existence, existence_quality, existence_quality_class.");
+}
+
 std::vector<BoundingBox> DecodePbod(const PbodOutputsView& outputs, const PillarGrid& grid, const PbodPostprocessConfig& config) {
   std::vector<BoundingBox> objects;
   if (outputs.focal_logits == nullptr || outputs.objectness_logits == nullptr || outputs.size_posterior == nullptr ||
@@ -65,11 +78,26 @@ std::vector<BoundingBox> DecodePbod(const PbodOutputsView& outputs, const Pillar
       }
     }
 
-    float class_denom = 0.0F;
-    for (int c = 0; c < outputs.num_classes; ++c) {
-      class_denom += std::exp(class_logits[class_base + static_cast<std::size_t>(c)] - best_logit);
+    // focal_logits already encode existence weighted by localization quality.
+    // Do not multiply by objectness again.
+    float score = quality_weighted_presence;
+    switch (config.score_mode) {
+      case PbodScoreMode::Existence:
+        score = objectness;
+        break;
+      case PbodScoreMode::ExistenceQuality:
+        break;
+      case PbodScoreMode::ExistenceQualityClass: {
+        float class_denom = 0.0F;
+        for (int c = 0; c < outputs.num_classes; ++c) {
+          class_denom += std::exp(class_logits[class_base + static_cast<std::size_t>(c)] - best_logit);
+        }
+        score /= class_denom;
+        break;
+      }
+      default:
+        throw std::invalid_argument("Unsupported PBOD score mode.");
     }
-    const float score = quality_weighted_presence / class_denom;
     if (!std::isfinite(score) || !std::isfinite(objectness)) {
       continue;
     }

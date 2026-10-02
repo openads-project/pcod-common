@@ -96,7 +96,12 @@ The decoder selects the best class per cell and computes its score as
 contains presence multiplied by predicted localization quality.
 C++ `DecodePbod` handles one set of pillars and selects one class per pillar. It requires
 separate `objectness_logits`, stores their sigmoid in `existence_probability`, and stores the
-quality- and class-weighted ranking score in `detection_score`.
+selected ranking score in `detection_score`. `PbodPostprocessConfig::score_mode` defaults to
+`PbodScoreMode::ExistenceQuality` (the sigmoid of `focal_logits`). Use `Existence` for the sigmoid
+of `objectness_logits` alone, or `ExistenceQualityClass` to additionally multiply the focal
+score by the highest softmax class probability, preserving the previous scoring behavior.
+`ParsePbodScoreMode` accepts the runtime strings `existence`, `existence_quality`, and
+`existence_quality_class`; unsupported strings throw `std::invalid_argument`.
 NMS filters and ranks boxes by `detection_score` when it is available.
 
 `pcod_common.box_ops.aligned_box_iou` computes differentiable rotated IoU for corresponding box pairs
