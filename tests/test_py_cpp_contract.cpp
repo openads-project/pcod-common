@@ -269,8 +269,8 @@ int main() {
     view.num_classes = 2;
     view.reg_dim = 7;
     pcod_common::PbodPostprocessConfig cfg;
-    // Python training decoder uses the class-weighted score.
-    cfg.score_mode = pcod_common::PbodScoreMode::ExistenceQualityClass;
+    // Python and C++ share the existence-quality default.
+    cfg.score_mode = pcod_common::PbodScoreMode::ExistenceQuality;
     auto decoded = pcod_common::DecodePbod(view, grid, cfg);
     assert(decoded.size() == 1);
     const auto torch_available =

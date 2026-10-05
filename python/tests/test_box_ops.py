@@ -20,7 +20,7 @@ def test_decode_scores_geometry_and_class_selection():
     batch, boxes, scores = decode_pbod(reg, focal, cls, sizes, centers)
     assert batch.tolist() == [0, 0]
     assert boxes[:, 7].tolist() == [0, 1]
-    torch.testing.assert_close(scores, focal.sigmoid().reshape(-1) * cls.softmax(-1).amax(-1).reshape(-1))
+    torch.testing.assert_close(scores, focal.sigmoid().reshape(-1))
     assert torch.isfinite(boxes).all()
     torch.testing.assert_close(boxes[0, 3:6], torch.tensor([10.0, -10.0, 0.0]).exp())
 

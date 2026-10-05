@@ -108,11 +108,14 @@ def decode_pbod(
     score_threshold: float = 0.0,
     yaw_flip_logits: torch.Tensor | None = None,
     objectness_logits: torch.Tensor | None = None,
+    *,
+    score_components: tuple[str, ...] = ("existence", "quality"),
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor] | tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Decode flattened PBOD outputs (B,N,C*7), matching C++ DecodePbod.
 
     One physical box per cell, labeled by its best class. Scores combine the
-    exported presence/quality probability and the conditional class probability.
+    configured factors (default existence and quality). The focal output always
+    encodes existence times quality; class probabilities still determine labels.
     Returns batch indices, absolute (N,8) boxes including local class, and scores.
     When objectness logits are supplied, also returns the aligned presence probabilities.
     """
@@ -120,7 +123,19 @@ def decode_pbod(
     c = class_logits.shape[-1]
     probabilities = class_logits.float().softmax(-1)
     class_probability, labels = probabilities.max(-1)
-    scores = focal_logits.float().squeeze(-1).sigmoid() * class_probability
+    components = set(score_components)
+    if len(components) != len(score_components) or components not in (
+        {"existence"}, {"existence", "quality"}, {"existence", "quality", "class"}
+    ):
+        raise ValueError("Supported score components: existence; existence+quality; existence+quality+class")
+    if components == {"existence"}:
+        if objectness_logits is None:
+            raise ValueError("objectness_logits are required for existence-only scoring")
+        scores = objectness_logits.float().squeeze(-1).sigmoid()
+    else:
+        scores = focal_logits.float().squeeze(-1).sigmoid()
+        if "class" in components:
+            scores = scores * class_probability
     batch, cell = torch.nonzero(scores >= score_threshold, as_tuple=True)
     cls = labels[batch, cell]
     reg = reg_logits.reshape(b, n, c, 7)[batch, cell, cls]

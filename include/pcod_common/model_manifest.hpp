@@ -61,6 +61,7 @@ struct RuntimeDefaults {
 
   /** Postprocessing defaults. */
   struct Postprocessing {
+    std::string score_mode = "existence_quality";  ///< Detection confidence factors.
     float class_score_threshold = 0.0f;       ///< Decoder confidence threshold.
     std::vector<float> nms_score_thresholds;  ///< NMS class score thresholds.
     float nms_iou_threshold = 0.1f;           ///< Rotated NMS IoU threshold.
