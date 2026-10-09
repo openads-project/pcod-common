@@ -65,6 +65,7 @@ int main() {
   out << "    point_feature:\n";
   out << "      value_threshold: 1.0\n";
   out << "  postprocessing:\n";
+  out << "    score_mode: existence_quality_class\n";
   out << "    class_score_threshold: 0.0\n";
   out << "    nms:\n";
   out << "      score_threshold: 0.2\n";
@@ -73,6 +74,7 @@ int main() {
   out.close();
 
   auto manifest = pcod_common::LoadModelManifest(path);
+  assert(manifest.runtime_defaults.postprocessing.score_mode == "existence_quality_class");
   pcod_common::ValidateModelManifest(manifest);
   assert(manifest.frozen_contract.preprocessing.max_num_points == 100);
   assert(manifest.runtime_defaults.preprocessing.point_feature.value_threshold == 1.0f);

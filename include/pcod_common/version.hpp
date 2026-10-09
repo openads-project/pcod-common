@@ -5,7 +5,7 @@
 
 namespace pcod_common {
 /** Library release version. */
-inline constexpr const char* kVersion = "1.0.0";
+inline constexpr const char* kVersion = "2.0.0";
 /** Supported model-manifest schema version. */
 inline constexpr const char* kManifestSchemaVersion = "2.0";
 }  // namespace pcod_common

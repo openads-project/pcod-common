@@ -4,33 +4,43 @@
 #include "pcod_common/nms.hpp"
 
 #include <algorithm>
-
-#include "pcod_common/math.hpp"
+#include <limits>
 
 namespace pcod_common {
 
 void ApplyRotatedNms(std::vector<BoundingBox>& bboxes, const NmsConfig& config) {
+  if (config.max_detections <= 0) {
+    bboxes.clear();
+    return;
+  }
   if (bboxes.empty()) {
     return;
   }
 
+  auto best_class = [](const BoundingBox& box) {
+    float best = -std::numeric_limits<float>::infinity();
+    std::size_t index = 0;
+    for (const auto& entry : box.classification) {
+      if (entry.score > best) {
+        best = entry.score;
+        index = entry.class_idx;
+      }
+    }
+    return index;
+  };
   std::vector<std::pair<float, BoundingBox*>> scored;
   scored.reserve(bboxes.size());
 
   for (auto& bbox : bboxes) {
-    float max_class_score = 0.0F;
-    std::size_t max_class_idx = 0;
-    for (const auto& entry : bbox.classification) {
-      if (entry.score > max_class_score) {
-        max_class_score = entry.score;
-        max_class_idx = entry.class_idx;
-      }
-    }
+    const std::size_t max_class_idx = best_class(bbox);
     float class_thresh = config.internal_score_threshold;
-    if (max_class_idx < config.score_thresholds.size()) {
-      class_thresh = config.score_thresholds[max_class_idx];
+    if (!config.score_thresholds.empty()) {
+      class_thresh = config.score_thresholds[std::min(max_class_idx, config.score_thresholds.size() - 1)];
     }
-    float score = scale_score(bbox.existence_probability, class_thresh, config.internal_score_threshold);
+    const float score = bbox.detection_score.value_or(bbox.existence_probability);
+    if (score < class_thresh) {
+      continue;
+    }
     scored.emplace_back(score, &bbox);
   }
 
@@ -40,12 +50,9 @@ void ApplyRotatedNms(std::vector<BoundingBox>& bboxes, const NmsConfig& config) 
   kept.reserve(bboxes.size());
 
   for (const auto& candidate : scored) {
-    if (candidate.first < config.internal_score_threshold) {
-      break;
-    }
     bool keep = true;
     for (const auto& kept_box : kept) {
-      if (candidate.second->overlaps(kept_box, config.iou_threshold)) {
+      if (best_class(*candidate.second) == best_class(kept_box) && candidate.second->overlaps(kept_box, config.iou_threshold)) {
         keep = false;
         break;
       }

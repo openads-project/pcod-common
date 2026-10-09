@@ -53,7 +53,7 @@ _MODEL_KEYS = {"stride", "up_stride", "first_up_stride", "pillar_map_size", "pil
 _RUNTIME_DEFAULTS_KEYS = {"preprocessing", "postprocessing"}
 _RUNTIME_PREPROCESSING_KEYS = {"point_feature"}
 _POINT_FEATURE_KEYS = {"value_threshold"}
-_RUNTIME_POSTPROCESSING_KEYS = {"class_score_threshold", "nms"}
+_RUNTIME_POSTPROCESSING_KEYS = {"class_score_threshold", "nms", "score_mode"}
 _NMS_KEYS = {"score_threshold", "iou_threshold", "max_num_objects"}
 
 
@@ -370,6 +370,12 @@ def _validate_runtime_defaults(payload: Dict[str, Any], *, norm_type: str, num_c
     postprocessing = _require_mapping(payload, "postprocessing")
     _reject_unknown_keys(postprocessing, allowed=_RUNTIME_POSTPROCESSING_KEYS, scope="runtime_defaults.postprocessing")
     _require_keys(postprocessing, ["class_score_threshold", "nms"], scope="runtime_defaults.postprocessing")
+    if postprocessing.get("score_mode", "existence_quality") not in {
+        "existence",
+        "existence_quality",
+        "existence_quality_class",
+    }:
+        raise ValueError("Unsupported runtime_defaults.postprocessing.score_mode")
     _require_probability(
         postprocessing.get("class_score_threshold", 0.0),
         field="runtime_defaults.postprocessing.class_score_threshold",
