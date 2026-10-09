@@ -108,7 +108,8 @@ std::vector<BoundingBox> DecodePbod(const PbodOutputsView& outputs, const Pillar
           class_idx < config.score_thresholds.size() ? config.score_thresholds[class_idx] : config.score_thresholds.front();
     }
 
-    if (score < score_thresh) {
+    // Zero scores also encode inactive dense cells in refined detectors.
+    if (score <= 0.0F || score < score_thresh) {
       continue;
     }
 

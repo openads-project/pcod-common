@@ -136,7 +136,7 @@ def decode_pbod(
         scores = focal_logits.float().squeeze(-1).sigmoid()
         if "class" in components:
             scores = scores * class_probability
-    batch, cell = torch.nonzero(scores >= score_threshold, as_tuple=True)
+    batch, cell = torch.nonzero((scores > 0) & (scores >= score_threshold), as_tuple=True)
     cls = labels[batch, cell]
     reg = reg_logits.reshape(b, n, c, 7)[batch, cell, cls]
     priors = size_priors.reshape(b, n, c, 3)[batch, cell, cls]
