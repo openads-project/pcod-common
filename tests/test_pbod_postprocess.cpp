@@ -49,13 +49,11 @@ int main() {
     assert(std::abs(box.center[1] - 0.5F) < 1e-6F);
     // Masked dense cells stay absent even with a zero confidence threshold.
     focal_logits[0] = -10000.0F;
-    for (auto mode : {pcod_common::PbodScoreMode::Existence,
-                      pcod_common::PbodScoreMode::ExistenceQuality,
+    for (auto mode : {pcod_common::PbodScoreMode::Existence, pcod_common::PbodScoreMode::ExistenceQuality,
                       pcod_common::PbodScoreMode::ExistenceQualityClass}) {
       config.score_mode = mode;
       assert(pcod_common::DecodePbod(view, grid, config).empty());
     }
-
   }
 
   {
