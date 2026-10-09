@@ -371,7 +371,9 @@ def _validate_runtime_defaults(payload: Dict[str, Any], *, norm_type: str, num_c
     _reject_unknown_keys(postprocessing, allowed=_RUNTIME_POSTPROCESSING_KEYS, scope="runtime_defaults.postprocessing")
     _require_keys(postprocessing, ["class_score_threshold", "nms"], scope="runtime_defaults.postprocessing")
     if postprocessing.get("score_mode", "existence_quality") not in {
-        "existence", "existence_quality", "existence_quality_class",
+        "existence",
+        "existence_quality",
+        "existence_quality_class",
     }:
         raise ValueError("Unsupported runtime_defaults.postprocessing.score_mode")
     _require_probability(

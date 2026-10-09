@@ -125,7 +125,9 @@ def decode_pbod(
     class_probability, labels = probabilities.max(-1)
     components = set(score_components)
     if len(components) != len(score_components) or components not in (
-        {"existence"}, {"existence", "quality"}, {"existence", "quality", "class"}
+        {"existence"},
+        {"existence", "quality"},
+        {"existence", "quality", "class"},
     ):
         raise ValueError("Supported score components: existence; existence+quality; existence+quality+class")
     if components == {"existence"}:
