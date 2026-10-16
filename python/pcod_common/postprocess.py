@@ -258,6 +258,42 @@ def apply_nms(
     return (*result, keep_indices) if return_indices else result
 
 
+def _nms_sorted_prefixes(ext, boxes: torch.Tensor, group_offsets: List[int], iou_threshold: float, max_output: int):
+    """Exact capped greedy NMS without comparing winners to irrelevant score tails.
+
+    Groups must already be sorted by descending score. Later candidates cannot
+    suppress earlier survivors. A prefix with max_output survivors therefore has
+    the same capped result as the full group. Otherwise double the prefix until
+    the cap is reached or the group is exhausted; this is not a pre-NMS top-k cap.
+    The initial prefix size is a local launch/workspace tradeoff.
+    """
+    initial = max(1024, 4 * max_output)
+    if max_output <= 0 or max(b - a for a, b in zip(group_offsets, group_offsets[1:])) <= initial:
+        offsets = torch.tensor(group_offsets, device=boxes.device, dtype=torch.long)
+        return ext.rotated_nms_cuda_batched(boxes, offsets, iou_threshold, max_output)
+
+    selected = torch.zeros(len(boxes), device=boxes.device, dtype=torch.bool)
+    pending = [(a, b, min(initial, b - a)) for a, b in zip(group_offsets, group_offsets[1:]) if b > a]
+    while pending:
+        lengths = [length for _, _, length in pending]
+        offsets = [0]
+        for length in lengths:
+            offsets.append(offsets[-1] + length)
+        prefix_boxes = torch.cat([boxes[a : a + length] for a, _, length in pending])
+        prefix_offsets = torch.tensor(offsets, device=boxes.device, dtype=torch.long)
+        kept = ext.rotated_nms_cuda_batched(prefix_boxes, prefix_offsets, iou_threshold, max_output)
+        masks = kept.split(lengths)
+        counts = torch.stack([mask.sum() for mask in masks]).cpu().tolist()
+        remaining = []
+        for (a, b, length), mask, count in zip(pending, masks, counts):
+            if count >= max_output or length == b - a:
+                selected[a : a + length] = mask
+            else:
+                remaining.append((a, b, min(2 * length, b - a)))
+        pending = remaining
+    return selected
+
+
 def apply_nms_batch(
     boxes_batch: Sequence[torch.Tensor],
     scores_batch: Sequence[torch.Tensor],
@@ -271,7 +307,7 @@ def apply_nms_batch(
     pre_nms_topk: int | None = None,
     return_indices: bool = False,
 ) -> List[NmsResult | NmsResultWithIndices]:
-    """Apply independent class-aware NMS groups in one CUDA launch.
+    """Apply independent class-aware NMS groups concurrently on CUDA.
 
     The CUDA path is semantically identical to calling :func:`apply_nms` for every
     item, but executes all sample/class groups concurrently. Unsupported devices or
@@ -394,8 +430,7 @@ def apply_nms_batch(
     flat_boxes = torch.cat(sorted_boxes_chunks, dim=0)
     flat_original = torch.cat(sorted_original_chunks, dim=0)
     flat_sample_ids = torch.cat(sample_id_chunks, dim=0)
-    offsets = torch.tensor(group_offsets, device=flat_boxes.device, dtype=torch.long)
-    selected = ext.rotated_nms_cuda_batched(flat_boxes, offsets, iou_threshold, max_num_objects)
+    selected = _nms_sorted_prefixes(ext, flat_boxes, group_offsets, iou_threshold, max_num_objects)
     kept_original = flat_original[selected]
     kept_sample_ids = flat_sample_ids[selected]
     counts = torch.bincount(kept_sample_ids, minlength=len(boxes_batch)).cpu().tolist()
