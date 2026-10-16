@@ -86,6 +86,38 @@ config = PillarPreprocessorConfig(
 preprocessor = PillarPreprocessor(config)
 ```
 
+### Detection Postprocessing
+
+`pcod_common.box_ops.decode_pbod` decodes PBOD outputs into sample indices, boxes, and scores.
+Its tensor inputs have a leading sample dimension; use size 1 for a single sample.
+Each output box has eight values: `(x, y, z, length, width, height, yaw, class_index)`.
+The decoder selects the best class per cell independently of score composition.
+Python `decode_pbod(..., score_components=("existence", "quality"))` and C++
+`PbodPostprocessConfig::score_mode` support the same three choices:
+
+- `existence`: presence alone; Python requires `objectness_logits`.
+- `existence_quality`: existence × quality (default).
+- `existence_quality_class`: existence × quality × maximum softmax class probability.
+
+Python accepts the corresponding component tuples; other combinations are rejected.
+The exported `focal_logits` always encode existence × quality, while
+`objectness_logits` encode existence. `ParsePbodScoreMode` accepts the three runtime
+strings above. The manifest carries `runtime_defaults.postprocessing.score_mode`;
+consumers should apply
+`ParsePbodScoreMode(manifest.runtime_defaults.postprocessing.score_mode)` to their
+decoder configuration. Existence remains separately available as
+`existence_probability`, and the selected combined score as `detection_score`.
+NMS filters and ranks boxes by `detection_score` when it is available.
+
+`pcod_common.box_ops.aligned_box_iou` computes differentiable rotated IoU for corresponding box pairs
+in `(x, y, z, length, width, height, yaw)` format. It uses 3D overlap by default; pass `three_d=False`
+for bird's-eye-view IoU. Set `distance_penalty=True` for DIoU.
+
+Rotated NMS in Python and C++ suppresses lower-scored boxes of the same class using 3D IoU when both
+boxes have positive height. It uses bird's-eye-view IoU when either box has zero or negative height.
+Score thresholds apply directly to the decoded scores; the C++ `NmsConfig::internal_score_threshold`
+is used only when no class thresholds are supplied.
+
 ## 💻 Development
 
 ### Repository Layout
@@ -120,7 +152,7 @@ pip install -e ".[dev]"
 pytest
 ```
 
-`python/tests/test_postprocess.py` requires PyTorch and TorchVision. Tests whose optional dependencies or CUDA extensions are unavailable are skipped; the manifest tests still run.
+`python/tests/test_postprocess.py` and `python/tests/test_box_ops.py` require PyTorch and TorchVision. Tests that need the rotated NMS extension skip when its build toolchain is unavailable, and CUDA tests skip when CUDA is unavailable. The manifest tests do not require PyTorch.
 
 ### Build Python Distributions
 
@@ -187,6 +219,7 @@ int main() {
   const int num_pillars = 4;
   const int num_classes = 2;
   float focal_logits[num_pillars] = {2.0f, -2.0f, 2.0f, -2.0f};
+  float objectness_logits[num_pillars] = {3.0f, 0.0f, 3.0f, 0.0f};
   float class_logits[num_pillars * num_classes] = {
       0.1f, 0.9f, 0.1f, 0.9f, 0.1f, 0.9f, 0.1f, 0.9f};
   std::vector<float> size_posterior(num_pillars * num_classes * 3, 1.0f);
@@ -194,6 +227,7 @@ int main() {
 
   pcod_common::PbodOutputsView view;
   view.focal_logits = focal_logits;
+  view.objectness_logits = objectness_logits;
   view.size_posterior = size_posterior.data();
   view.class_logits = class_logits;
   view.reg_logits = reg_logits.data();

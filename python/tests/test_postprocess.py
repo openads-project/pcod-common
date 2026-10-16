@@ -18,7 +18,7 @@ pytestmark = pytest.mark.skipif(
 if HAS_TORCH and HAS_TORCHVISION:
     import pcod_common.postprocess as postprocess
     import torch
-    from pcod_common.postprocess import apply_nms
+    from pcod_common.postprocess import apply_nms, apply_nms_batch
 
 
 def _make_box(x: float, y: float, length: float = 1.0, width: float = 1.0, yaw: float = 0.0) -> list[float]:
@@ -351,6 +351,57 @@ def test_rotated_extension_cuda_nms_cases_match_cpu_and_expected(
     assert cuda_keep.cpu().tolist() == expected
 
 
+@pytest.mark.parametrize(
+    ("pre_nms_topk", "per_class_topk"),
+    [(None, True), (12, True), (12, False)],
+)
+def test_apply_nms_batch_cuda_matches_per_sample_reference(
+    pre_nms_topk: int | None,
+    per_class_topk: bool,
+):
+    """Keep batched CUDA NMS exactly equal to the public per-sample API."""
+    if not torch.cuda.is_available():
+        pytest.skip("CUDA is not available to torch")
+
+    try:
+        ext = postprocess._get_rotated_ext()
+    except Exception as exc:  # pragma: no cover - environment-dependent extension toolchain
+        pytest.skip(f"rotated NMS extension unavailable: {exc}")
+    if not hasattr(ext, "rotated_nms_cuda_batched"):
+        pytest.skip("rotated NMS extension has no batched CUDA entrypoint")
+
+    generator = torch.Generator(device="cuda").manual_seed(20260923)
+    boxes_batch = []
+    scores_batch = []
+    labels_batch = []
+    for sample_idx in range(9):
+        count = 0 if sample_idx == 0 else 32 + sample_idx
+        boxes = torch.randn(count, 7, generator=generator, device="cuda")
+        boxes[:, :2] *= 4.0
+        boxes[:, 3:6] = boxes[:, 3:6].abs() + 0.5
+        boxes_batch.append(boxes)
+        scores_batch.append(torch.rand(count, generator=generator, device="cuda"))
+        labels_batch.append(torch.randint(0, 3, (count,), generator=generator, device="cuda"))
+
+    kwargs = {
+        "score_thresholds": [0.1, 0.2, 0.3],
+        "iou_threshold": 0.5,
+        "max_num_objects": 16,
+        "per_class_topk": per_class_topk,
+        "use_rotated": True,
+        "pre_nms_topk": pre_nms_topk,
+    }
+    expected = [
+        apply_nms(boxes, scores, labels, **kwargs) for boxes, scores, labels in zip(boxes_batch, scores_batch, labels_batch)
+    ]
+
+    actual = apply_nms_batch(boxes_batch, scores_batch, labels_batch, **kwargs)
+
+    for actual_sample, expected_sample in zip(actual, expected):
+        for actual_tensor, expected_tensor in zip(actual_sample, expected_sample):
+            assert torch.equal(actual_tensor, expected_tensor)
+
+
 def test_rotated_extension_cpu_rejects_extra_box_columns():
     """Reject wider tensors instead of silently ignoring extra columns."""
     try:
@@ -418,3 +469,85 @@ def test_apply_nms_rotated_fails_fast_when_extension_fails(monkeypatch: pytest.M
             max_num_objects=10,
             use_rotated=True,
         )
+
+
+class _PrefixReference:
+    """Small CPU oracle: identical boxes overlap, distinct positions do not."""
+
+    def __init__(self):
+        self.work = []
+
+    def rotated_nms_cuda_batched(self, boxes, offsets, iou_threshold, max_output):
+        self.work.append(len(boxes))
+        result = torch.zeros(len(boxes), dtype=torch.bool, device=boxes.device)
+        for a, b in zip(offsets.tolist(), offsets.tolist()[1:]):
+            seen = set()
+            for i in range(a, b):
+                if len(seen) >= max_output:
+                    break
+                position = tuple(boxes[i, :3].tolist())
+                if position not in seen:
+                    seen.add(position)
+                    result[i] = True
+        return result
+
+
+@pytest.mark.parametrize("cap", [1, 16, 256])
+@pytest.mark.parametrize("pattern", ["separate", "identical", "late_survivors", "mixed_groups"])
+def test_sorted_prefixes_exact_and_expand_when_needed(cap, pattern):
+    """Preserve full-search survivors, including those beyond the initial prefix."""
+    n = 4097
+    boxes = torch.zeros(n, 7)
+    boxes[:, 3:6] = 1
+    if pattern == "separate":
+        boxes[:, 0] = torch.arange(n) * 2
+    elif pattern == "late_survivors":
+        boxes[3072:, 0] = torch.arange(1, n - 3072 + 1) * 2
+    elif pattern == "mixed_groups":
+        boxes[2048:, 0] = torch.arange(n - 2048) * 2
+    offsets = [0, 0, 2048, n, n] if pattern == "mixed_groups" else [0, n]
+    oracle = _PrefixReference()
+    expected = oracle.rotated_nms_cuda_batched(boxes, torch.tensor(offsets), 0.2, cap)
+    measured = _PrefixReference()
+    actual = postprocess._nms_sorted_prefixes(measured, boxes, offsets, 0.2, cap)
+    assert torch.equal(actual, expected)
+    if pattern == "separate":
+        assert measured.work == [1024]
+    if pattern == "late_survivors" and cap > 1:
+        assert measured.work == [1024, 2048, 4096]
+
+
+@pytest.mark.parametrize("per_class", [False, True])
+@pytest.mark.parametrize("threshold", [0.0, 0.2, 1.0])
+def test_adaptive_nms_cuda_matches_full_groups(per_class, threshold):
+    """Match native full-group NMS and preserve public score/index semantics."""
+    if not torch.cuda.is_available():
+        pytest.skip("CUDA is unavailable")
+    ext = postprocess._get_rotated_ext()
+    generator = torch.Generator().manual_seed(97)
+    boxes = torch.randn(5000, 7, generator=generator)
+    boxes[:, :2] *= 15
+    boxes[:, 3:6] = boxes[:, 3:6].abs() + 0.5
+    # Score ties and duplicate runs crossing the first prefix boundary.
+    boxes[:2200] = boxes[0].clone()
+    scores = torch.randint(1, 11, (len(boxes),), generator=generator).float() / 10
+    labels = torch.randint(0, 2, (len(boxes),), generator=generator)
+    boxes, scores, labels = (value.cuda() for value in (boxes, scores, labels))
+    offsets = [0, 0, 2200, 5000]
+    expected = ext.rotated_nms_cuda_batched(boxes, torch.tensor(offsets, device="cuda"), threshold, 32)
+    actual = postprocess._nms_sorted_prefixes(ext, boxes, offsets, threshold, 32)
+    assert torch.equal(actual, expected)
+    # Exercise sorting, global/per-class caps and original input indices as well.
+    from unittest.mock import patch
+
+    args = ([boxes, boxes[:0]], [scores, scores[:0]], [labels, labels[:0]], [0.1, 0.2], threshold, 32)
+    with patch.object(
+        postprocess,
+        "_nms_sorted_prefixes",
+        side_effect=lambda ext, b, o, t, k: ext.rotated_nms_cuda_batched(b, torch.tensor(o, device=b.device), t, k),
+    ):
+        reference = apply_nms_batch(*args, per_class_topk=per_class, return_indices=True)
+    optimized = apply_nms_batch(*args, per_class_topk=per_class, return_indices=True)
+    for before, after in zip(reference, optimized):
+        for a, b in zip(before, after):
+            assert torch.equal(a, b)

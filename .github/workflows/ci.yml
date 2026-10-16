@@ -113,6 +113,16 @@ jobs:
           python -m pip install -e ".[dev]"
       - name: Run Python tests
         run: pytest -q
+      - name: Install C++ contract dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ pkg-config libyaml-cpp-dev
+      - name: Run Python/C++ contract test
+        run: |
+          python3 -c "import torch, torchvision"
+          cmake -S . -B build-contract -DPCOD_COMMON_BUILD_TESTS=ON
+          cmake --build build-contract --target pcod_common_test_py_cpp_contract --parallel 2
+          ctest --test-dir build-contract -R '^pcod_common_test_py_cpp_contract$' --output-on-failure
 
   python-package:
     name: Python distributions

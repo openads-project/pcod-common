@@ -5,13 +5,16 @@
 
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import List, Sequence, Tuple
 
 import torch
+from pcod_common.box_ops import aligned_box_iou
 from pcod_common.torch_extensions.rotated_nms import load_rotated_nms_extension
 from torchvision.ops import nms
 
 _ROTATED_NMS_EXT = None
+NmsResult = Tuple[torch.Tensor, torch.Tensor, torch.Tensor]
+NmsResultWithIndices = Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]
 
 
 def _get_rotated_ext():
@@ -134,7 +137,8 @@ def _nms_rotated_torch(
     for idx in order.tolist():
         suppress = False
         for kept_idx in keep:
-            iou = _oriented_iou_torch(boxes_xywlh[idx], boxes_xywlh[kept_idx])
+            pair = boxes_xywlh[[idx, kept_idx]]
+            iou = aligned_box_iou(pair[:1], pair[1:], three_d=bool((pair[:, 5] > 0).all()))[0]
             if iou > iou_threshold:
                 suppress = True
                 break
@@ -177,10 +181,12 @@ def apply_nms(
     per_class_topk: bool = False,
     use_rotated: bool = True,
     pre_nms_topk: int | None = None,
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Apply axis-aligned or rotated non-maximum suppression."""
+    return_indices: bool = False,
+) -> NmsResult | NmsResultWithIndices:
+    """Apply NMS, optionally returning indices into the input candidate tensors."""
     if boxes.numel() == 0:
-        return boxes, scores, labels
+        result = (boxes, scores, labels)
+        return (*result, labels.new_empty((0,), dtype=torch.long)) if return_indices else result
 
     if boxes.ndim != 2 or boxes.size(1) != 7:
         raise ValueError("boxes must have shape (N, 7)")
@@ -240,11 +246,201 @@ def apply_nms(
         keep_indices.append(original_indices[class_keep])
 
     if not keep_indices:
-        return boxes[:0], scores[:0], labels[:0]
+        result = (boxes[:0], scores[:0], labels[:0])
+        return (*result, labels.new_empty((0,), dtype=torch.long)) if return_indices else result
 
     keep_indices = torch.cat(keep_indices, dim=0)
     if not per_class_topk:
         order = scores[keep_indices].argsort(descending=True)
         keep_indices = keep_indices[order][:max_num_objects]
 
-    return boxes[keep_indices], scores[keep_indices], labels[keep_indices]
+    result = (boxes[keep_indices], scores[keep_indices], labels[keep_indices])
+    return (*result, keep_indices) if return_indices else result
+
+
+def _nms_sorted_prefixes(ext, boxes: torch.Tensor, group_offsets: List[int], iou_threshold: float, max_output: int):
+    """Exact capped greedy NMS without comparing winners to irrelevant score tails.
+
+    Groups must already be sorted by descending score. Later candidates cannot
+    suppress earlier survivors. A prefix with max_output survivors therefore has
+    the same capped result as the full group. Otherwise double the prefix until
+    the cap is reached or the group is exhausted; this is not a pre-NMS top-k cap.
+    The initial prefix size is a local launch/workspace tradeoff.
+    """
+    initial = max(1024, 4 * max_output)
+    if max_output <= 0 or max(b - a for a, b in zip(group_offsets, group_offsets[1:])) <= initial:
+        offsets = torch.tensor(group_offsets, device=boxes.device, dtype=torch.long)
+        return ext.rotated_nms_cuda_batched(boxes, offsets, iou_threshold, max_output)
+
+    selected = torch.zeros(len(boxes), device=boxes.device, dtype=torch.bool)
+    pending = [(a, b, min(initial, b - a)) for a, b in zip(group_offsets, group_offsets[1:]) if b > a]
+    while pending:
+        lengths = [length for _, _, length in pending]
+        offsets = [0]
+        for length in lengths:
+            offsets.append(offsets[-1] + length)
+        prefix_boxes = torch.cat([boxes[a : a + length] for a, _, length in pending])
+        prefix_offsets = torch.tensor(offsets, device=boxes.device, dtype=torch.long)
+        kept = ext.rotated_nms_cuda_batched(prefix_boxes, prefix_offsets, iou_threshold, max_output)
+        masks = kept.split(lengths)
+        counts = torch.stack([mask.sum() for mask in masks]).cpu().tolist()
+        remaining = []
+        for (a, b, length), mask, count in zip(pending, masks, counts):
+            if count >= max_output or length == b - a:
+                selected[a : a + length] = mask
+            else:
+                remaining.append((a, b, min(2 * length, b - a)))
+        pending = remaining
+    return selected
+
+
+def apply_nms_batch(
+    boxes_batch: Sequence[torch.Tensor],
+    scores_batch: Sequence[torch.Tensor],
+    labels_batch: Sequence[torch.Tensor],
+    score_thresholds: List[float],
+    iou_threshold: float,
+    max_num_objects: int,
+    *,
+    per_class_topk: bool = False,
+    use_rotated: bool = True,
+    pre_nms_topk: int | None = None,
+    return_indices: bool = False,
+) -> List[NmsResult | NmsResultWithIndices]:
+    """Apply independent class-aware NMS groups concurrently on CUDA.
+
+    The CUDA path is semantically identical to calling :func:`apply_nms` for every
+    item, but executes all sample/class groups concurrently. Unsupported devices or
+    modes deliberately use the reference API. Optional indices refer to each
+    sample's input candidate tensors.
+    """
+    if not (len(boxes_batch) == len(scores_batch) == len(labels_batch)):
+        raise ValueError("boxes_batch, scores_batch, and labels_batch must have equal lengths")
+    if not boxes_batch:
+        return []
+    if not use_rotated or not all(boxes.is_cuda and scores.is_cuda for boxes, scores in zip(boxes_batch, scores_batch)):
+        return [
+            apply_nms(
+                boxes,
+                scores,
+                labels,
+                score_thresholds,
+                iou_threshold,
+                max_num_objects,
+                per_class_topk=per_class_topk,
+                use_rotated=use_rotated,
+                pre_nms_topk=pre_nms_topk,
+                return_indices=return_indices,
+            )
+            for boxes, scores, labels in zip(boxes_batch, scores_batch, labels_batch)
+        ]
+
+    ext = _get_rotated_ext()
+    if not hasattr(ext, "rotated_nms_cuda_batched"):
+        return [
+            apply_nms(
+                boxes,
+                scores,
+                labels,
+                score_thresholds,
+                iou_threshold,
+                max_num_objects,
+                per_class_topk=per_class_topk,
+                use_rotated=True,
+                pre_nms_topk=pre_nms_topk,
+                return_indices=return_indices,
+            )
+            for boxes, scores, labels in zip(boxes_batch, scores_batch, labels_batch)
+        ]
+
+    for boxes, scores, labels in zip(boxes_batch, scores_batch, labels_batch):
+        if boxes.ndim != 2 or boxes.size(1) != 7:
+            raise ValueError("boxes must have shape (N, 7)")
+        if labels.numel() != scores.numel():
+            raise ValueError("labels and scores must have the same length")
+
+    device = boxes_batch[0].device
+    sample_chunks = [
+        torch.full((scores.numel(),), sample_idx, device=device, dtype=torch.long)
+        for sample_idx, scores in enumerate(scores_batch)
+    ]
+    original_chunks = [torch.arange(scores.numel(), device=device, dtype=torch.long) for scores in scores_batch]
+    flat_boxes_input = torch.cat(list(boxes_batch), dim=0)
+    flat_scores_input = torch.cat(list(scores_batch), dim=0)
+    flat_labels_input = torch.cat(list(labels_batch), dim=0)
+    flat_sample_input = torch.cat(sample_chunks, dim=0)
+    flat_original_input = torch.cat(original_chunks, dim=0)
+    if flat_scores_input.numel() == 0:
+        if return_indices:
+            return [
+                (boxes[:0], scores[:0], labels[:0], labels.new_empty((0,), dtype=torch.long))
+                for boxes, scores, labels in zip(boxes_batch, scores_batch, labels_batch)
+            ]
+        return [(boxes[:0], scores[:0], labels[:0]) for boxes, scores, labels in zip(boxes_batch, scores_batch, labels_batch)]
+
+    num_classes = len(score_thresholds)
+    thresholds = flat_scores_input.new_tensor(score_thresholds)
+    valid_labels = (flat_labels_input >= 0) & (flat_labels_input < num_classes)
+    keep = valid_labels & (flat_scores_input >= thresholds[flat_labels_input.clamp(min=0, max=max(num_classes - 1, 0))])
+    flat_boxes_input = flat_boxes_input[keep]
+    flat_scores_input = flat_scores_input[keep]
+    flat_labels_input = flat_labels_input[keep]
+    flat_sample_input = flat_sample_input[keep]
+    flat_original_input = flat_original_input[keep]
+
+    group_ids = flat_sample_input * num_classes + flat_labels_input
+    group_counts = torch.bincount(group_ids, minlength=len(boxes_batch) * num_classes).cpu().tolist()
+    group_order = torch.argsort(group_ids, stable=True)
+    flat_boxes_input = flat_boxes_input[group_order]
+    flat_scores_input = flat_scores_input[group_order]
+    flat_sample_input = flat_sample_input[group_order]
+    flat_original_input = flat_original_input[group_order]
+
+    sorted_boxes_chunks: List[torch.Tensor] = []
+    sorted_original_chunks: List[torch.Tensor] = []
+    sample_id_chunks: List[torch.Tensor] = []
+    group_offsets = [0]
+    start = 0
+    for count in group_counts:
+        end = start + count
+        group_scores = flat_scores_input[start:end]
+        group_original = flat_original_input[start:end]
+        group_boxes = flat_boxes_input[start:end]
+        group_samples = flat_sample_input[start:end]
+        if pre_nms_topk is not None and count > pre_nms_topk:
+            group_scores, top_indices = torch.topk(
+                group_scores,
+                k=int(pre_nms_topk),
+                largest=True,
+                sorted=False,
+            )
+            group_original = group_original[top_indices]
+            group_boxes = group_boxes[top_indices]
+            group_samples = group_samples[top_indices]
+        _, score_order = group_scores.sort(descending=True)
+        group_boxes = group_boxes[score_order]
+        group_original = group_original[score_order]
+        group_samples = group_samples[score_order]
+        sorted_boxes_chunks.append(group_boxes)
+        sorted_original_chunks.append(group_original)
+        sample_id_chunks.append(group_samples)
+        group_offsets.append(group_offsets[-1] + group_original.numel())
+        start = end
+
+    flat_boxes = torch.cat(sorted_boxes_chunks, dim=0)
+    flat_original = torch.cat(sorted_original_chunks, dim=0)
+    flat_sample_ids = torch.cat(sample_id_chunks, dim=0)
+    selected = _nms_sorted_prefixes(ext, flat_boxes, group_offsets, iou_threshold, max_num_objects)
+    kept_original = flat_original[selected]
+    kept_sample_ids = flat_sample_ids[selected]
+    counts = torch.bincount(kept_sample_ids, minlength=len(boxes_batch)).cpu().tolist()
+    per_sample_kept = kept_original.split(counts)
+
+    results: List[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]] = []
+    for boxes, scores, labels, keep in zip(boxes_batch, scores_batch, labels_batch, per_sample_kept):
+        if not per_class_topk and keep.numel() > max_num_objects:
+            order = scores[keep].argsort(descending=True)[:max_num_objects]
+            keep = keep[order]
+        result = (boxes[keep], scores[keep], labels[keep])
+        results.append((*result, keep) if return_indices else result)
+    return results

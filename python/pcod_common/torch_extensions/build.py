@@ -13,7 +13,21 @@ from pathlib import Path
 from types import ModuleType
 from typing import Sequence
 
+import torch
 from torch.utils.cpp_extension import get_default_build_root, load
+
+
+def torch_extension_cache_tag() -> str:
+    """Return the Python/accelerator ABI tag used for extension artifacts."""
+
+    python_tag = f"py{sys.version_info.major}{sys.version_info.minor}{getattr(sys, 'abiflags', '')}"
+    if torch.version.hip is not None:
+        accelerator_tag = f"rocm{torch.version.hip.replace('.', '')}"
+    elif torch.version.cuda is not None:
+        accelerator_tag = f"cu{torch.version.cuda.replace('.', '')}"
+    else:
+        accelerator_tag = "cpu"
+    return f"{python_tag}_{accelerator_tag}"
 
 
 def ensure_torch_extension_environment(
