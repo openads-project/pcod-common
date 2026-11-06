@@ -76,6 +76,10 @@ if(PCOD_COMMON_BUILD_TESTS)
   target_link_libraries(pcod_common_test_nms PRIVATE pcod_common)
   add_test(NAME pcod_common_test_nms COMMAND pcod_common_test_nms)
 
+  add_executable(pcod_common_test_nms_merging tests/test_nms_merging.cpp)
+  target_link_libraries(pcod_common_test_nms_merging PRIVATE pcod_common)
+  add_test(NAME pcod_common_test_nms_merging COMMAND pcod_common_test_nms_merging)
+
   add_executable(pcod_common_test_manifest tests/test_manifest.cpp)
   target_link_libraries(pcod_common_test_manifest PRIVATE pcod_common)
   add_test(NAME pcod_common_test_manifest COMMAND pcod_common_test_manifest)

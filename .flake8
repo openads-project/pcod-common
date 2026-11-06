@@ -10,3 +10,7 @@ statistics = true
 inline-quotes = double
 multiline-quotes = double
 docstring-quotes = double
+
+# flake8-import-order's stdlib list predates Python 3.11's tomllib.
+per-file-ignores =
+    scripts/check_versions.py:I100,I201

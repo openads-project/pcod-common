@@ -129,14 +129,14 @@ int main() {
   }
   {
     // Overlapping boxes have different winners for each confidence combination.
-    auto grid = pcod_common::BuildPillarGrid({3, 1}, {{{0.0F, 3.0F}, {0.0F, 1.0F}, {0.0F, 1.0F}}}, 1, 1);
+    auto grid = pcod_common::BuildPillarGrid({4, 1}, {{{0.0F, 4.0F}, {0.0F, 1.0F}, {0.0F, 1.0F}}}, 1, 1);
     const auto logit = [](float probability) { return std::log(probability / (1.0F - probability)); };
-    float focal_logits[] = {logit(0.4F), logit(0.8F), logit(0.7F)};
-    float objectness_logits[] = {logit(0.9F), logit(0.7F), logit(0.6F)};
-    float class_logits[] = {logit(0.99F), 0.0F, logit(0.55F), 0.0F, logit(0.95F), 0.0F};
-    std::vector<float> sizes(18, 1.0F);
-    std::vector<float> regression(42, 0.0F);
-    for (int i = 0; i < 3; ++i) {
+    float focal_logits[] = {logit(0.4F), logit(0.8F), logit(0.7F), -10000.0F};
+    float objectness_logits[] = {logit(0.9F), logit(0.7F), logit(0.6F), -10000.0F};
+    float class_logits[] = {logit(0.99F), 0.0F, logit(0.55F), 0.0F, logit(0.95F), 0.0F, 0.0F, 100.0F};
+    std::vector<float> sizes(24, 1.0F);
+    std::vector<float> regression(56, 0.0F);
+    for (int i = 0; i < 4; ++i) {
       regression[static_cast<std::size_t>(i * 14)] = -static_cast<float>(i);
     }
     pcod_common::PbodOutputsView view;
@@ -145,7 +145,7 @@ int main() {
     view.class_logits = class_logits;
     view.size_posterior = sizes.data();
     view.reg_logits = regression.data();
-    view.num_pillars = 3;
+    view.num_pillars = 4;
     view.num_classes = 2;
     view.reg_dim = 7;
 
@@ -172,6 +172,30 @@ int main() {
       pcod_common::ApplyRotatedNms(boxes, nms_config);
       assert(boxes.size() == 1);
       assert(std::abs(*boxes[0].detection_score - expected_scores[mode][mode]) < 1e-6F);
+
+      // Decode -> merge: the inactive fourth cell must never contribute, and
+      // every active tail member contributes even when the output cap is one.
+      boxes = pcod_common::DecodePbod(view, grid, config);
+      auto merging = nms_config;
+      merging.merge_enabled = true;
+      merging.max_detections = 1;
+      pcod_common::NmsStats stats;
+      pcod_common::ApplyRotatedNms(boxes, merging, &stats);
+      assert(boxes.size() == 1 && stats.candidates == 3 && stats.merged_boxes == 2);
+      assert(boxes[0].classification.size() == 2);
+      assert(std::abs(*boxes[0].detection_score - expected_scores[mode][mode]) < 1e-6F);
+      assert(std::abs(boxes[0].existence_probability - 1.0F / (1.0F + std::exp(-objectness_logits[mode]))) < 1e-6F);
+      const double class_zero_probabilities[] = {0.99, 0.55, 0.95};
+      double expected_probability = 0.0, total_weight = 0.0;
+      for (std::size_t i = 0; i < 3; ++i) {
+        expected_probability += expected_scores[mode][i] * class_zero_probabilities[i];
+        total_weight += expected_scores[mode][i];
+      }
+      expected_probability /= total_weight;
+      for (const auto& entry : boxes[0].classification) {
+        const double expected = entry.class_idx == 0 ? expected_probability : 1.0 - expected_probability;
+        assert(std::abs(std::exp(entry.score) - expected) < 1e-6);
+      }
 
       config.score_thresholds = {0.65F};
       boxes = pcod_common::DecodePbod(view, grid, config);

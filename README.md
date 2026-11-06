@@ -118,6 +118,14 @@ boxes have positive height. It uses bird's-eye-view IoU when either box has zero
 Score thresholds apply directly to the decoded scores; the C++ `NmsConfig::internal_score_threshold`
 is used only when no class thresholds are supplied.
 
+C++ `ApplyRotatedNms` optionally merges boxes across classes with `NmsConfig::merge_enabled`
+(default `false`). The rotated 3D intersection volume divided by `sqrt(volume_a * volume_b)`
+must strictly exceed `merge_score_threshold` (default `0.5`); both heights must be positive.
+Each group retains the strongest box's geometry and averages full class probabilities using
+nonnegative detection-score weights (uniform when all scores are zero). Merged scores remain
+logits, stored as log probabilities. Membership uses the original representative without
+transitive grouping. Ordinary class-aware NMS uses its separate IoU threshold.
+
 ## 💻 Development
 
 ### Repository Layout
