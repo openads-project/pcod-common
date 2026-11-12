@@ -353,6 +353,34 @@ def apply_nms_batch(
             for boxes, scores, labels in zip(boxes_batch, scores_batch, labels_batch)
         ]
 
+    return _apply_nms_batch_rotated(
+        ext,
+        boxes_batch,
+        scores_batch,
+        labels_batch,
+        score_thresholds,
+        iou_threshold,
+        max_num_objects,
+        per_class_topk=per_class_topk,
+        pre_nms_topk=pre_nms_topk,
+        return_indices=return_indices,
+    )
+
+
+def _apply_nms_batch_rotated(
+    ext,
+    boxes_batch: Sequence[torch.Tensor],
+    scores_batch: Sequence[torch.Tensor],
+    labels_batch: Sequence[torch.Tensor],
+    score_thresholds: List[float],
+    iou_threshold: float,
+    max_num_objects: int,
+    *,
+    per_class_topk: bool = False,
+    pre_nms_topk: int | None = None,
+    return_indices: bool = False,
+) -> List[NmsResult | NmsResultWithIndices]:
+    """Filter, group and rank candidates for a sorted-group rotated NMS backend."""
     for boxes, scores, labels in zip(boxes_batch, scores_batch, labels_batch):
         if boxes.ndim != 2 or boxes.size(1) != 7:
             raise ValueError("boxes must have shape (N, 7)")
@@ -370,6 +398,15 @@ def apply_nms_batch(
     flat_labels_input = torch.cat(list(labels_batch), dim=0)
     flat_sample_input = torch.cat(sample_chunks, dim=0)
     flat_original_input = torch.cat(original_chunks, dim=0)
+    thresholds = flat_scores_input.new_tensor(score_thresholds)
+    threshold_indices = flat_labels_input.clamp(min=0, max=len(score_thresholds) - 1)
+    keep = (flat_labels_input >= 0) & (flat_scores_input >= thresholds[threshold_indices])
+    flat_boxes_input = flat_boxes_input[keep]
+    flat_scores_input = flat_scores_input[keep]
+    flat_labels_input = flat_labels_input[keep]
+    flat_sample_input = flat_sample_input[keep]
+    flat_original_input = flat_original_input[keep]
+
     if flat_scores_input.numel() == 0:
         if return_indices:
             return [
@@ -378,18 +415,14 @@ def apply_nms_batch(
             ]
         return [(boxes[:0], scores[:0], labels[:0]) for boxes, scores, labels in zip(boxes_batch, scores_batch, labels_batch)]
 
-    num_classes = len(score_thresholds)
-    thresholds = flat_scores_input.new_tensor(score_thresholds)
-    valid_labels = (flat_labels_input >= 0) & (flat_labels_input < num_classes)
-    keep = valid_labels & (flat_scores_input >= thresholds[flat_labels_input.clamp(min=0, max=max(num_classes - 1, 0))])
-    flat_boxes_input = flat_boxes_input[keep]
-    flat_scores_input = flat_scores_input[keep]
-    flat_labels_input = flat_labels_input[keep]
-    flat_sample_input = flat_sample_input[keep]
-    flat_original_input = flat_original_input[keep]
-
-    group_ids = flat_sample_input * num_classes + flat_labels_input
-    group_counts = torch.bincount(group_ids, minlength=len(boxes_batch) * num_classes).cpu().tolist()
+    _, group_ids, group_counts_tensor = torch.unique(
+        torch.stack((flat_sample_input, flat_labels_input), dim=1),
+        sorted=True,
+        return_inverse=True,
+        return_counts=True,
+        dim=0,
+    )
+    group_counts = group_counts_tensor.cpu().tolist()
     group_order = torch.argsort(group_ids, stable=True)
     flat_boxes_input = flat_boxes_input[group_order]
     flat_scores_input = flat_scores_input[group_order]
@@ -436,9 +469,9 @@ def apply_nms_batch(
     counts = torch.bincount(kept_sample_ids, minlength=len(boxes_batch)).cpu().tolist()
     per_sample_kept = kept_original.split(counts)
 
-    results: List[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]] = []
+    results: List[NmsResult | NmsResultWithIndices] = []
     for boxes, scores, labels, keep in zip(boxes_batch, scores_batch, labels_batch, per_sample_kept):
-        if not per_class_topk and keep.numel() > max_num_objects:
+        if not per_class_topk:
             order = scores[keep].argsort(descending=True)[:max_num_objects]
             keep = keep[order]
         result = (boxes[keep], scores[keep], labels[keep])

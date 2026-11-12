@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
 project(pcod_common_package_test LANGUAGES CXX)
 
+# Linking the imported target must raise the consumer's standard to C++17.
+set(CMAKE_CXX_STANDARD 14)
+
 find_package(pcod_common 2.0 CONFIG REQUIRED)
 
 add_executable(pcod_common_package_test main.cpp)

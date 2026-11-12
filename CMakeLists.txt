@@ -31,6 +31,7 @@ add_library(pcod_common STATIC
   src/model_manifest.cpp
 )
 add_library(pcod_common::pcod_common ALIAS pcod_common)
+target_compile_features(pcod_common PUBLIC cxx_std_17)
 
 set_target_properties(pcod_common PROPERTIES
   CXX_STANDARD 17

@@ -101,3 +101,28 @@ def test_nms_can_return_original_indices_for_associated_values():
     for selected in (result, batched):
         assert selected[3].tolist() == [1, 2]
         torch.testing.assert_close(expected_existence[selected[3]], torch.tensor([0.8, 0.4]))
+
+
+@pytest.mark.parametrize("components", [("existence",), ("existence", "quality"), ("existence", "quality", "class")])
+@pytest.mark.parametrize("all_invalid", [False, True])
+def test_decode_rejects_nonfinite_presence(components, all_invalid):
+    """Reject NaN presence in every scoring mode and preserve output alignment."""
+    objectness = torch.tensor([[[float("nan")], [2.0], [-2.0]]])
+    if all_invalid:
+        objectness.fill_(float("nan"))
+    centers = torch.tensor([[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]]])
+    batch, boxes, scores, presence = decode_pbod(
+        torch.zeros(1, 3, 7),
+        torch.zeros(1, 3, 1),
+        torch.zeros(1, 3, 1),
+        torch.ones(1, 3, 3),
+        centers,
+        objectness_logits=objectness,
+        score_components=components,
+    )
+    expected = torch.empty(0) if all_invalid else torch.tensor([1.0, 2.0])
+    assert batch.shape == scores.shape == presence.shape == expected.shape
+    assert boxes.shape == (len(expected), 8)
+    torch.testing.assert_close(boxes[:, 0], expected)
+    torch.testing.assert_close(presence, objectness[0, 1:, 0].sigmoid()[: len(expected)])
+    assert torch.isfinite(scores).all()

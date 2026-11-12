@@ -149,11 +149,15 @@ def decode_pbod(
         yaw = yaw + ((yaw.cos() >= 0) != desired).float() * torch.pi
     boxes[:, 6] = torch.remainder(yaw + torch.pi, 2 * torch.pi) - torch.pi
     finite = torch.isfinite(boxes).all(-1) & torch.isfinite(scores[batch, cell])
+    presence = None
+    if objectness_logits is not None:
+        presence = objectness_logits.float().squeeze(-1).sigmoid()[batch, cell]
+        finite = finite & torch.isfinite(presence)
     result = (
         batch[finite],
         torch.cat((boxes, cls[:, None].float()), -1)[finite],
         scores[batch, cell][finite],
     )
-    if objectness_logits is None:
+    if presence is None:
         return result
-    return (*result, objectness_logits.float().squeeze(-1).sigmoid()[batch, cell][finite])
+    return (*result, presence[finite])

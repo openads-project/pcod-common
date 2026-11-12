@@ -551,3 +551,62 @@ def test_adaptive_nms_cuda_matches_full_groups(per_class, threshold):
     for before, after in zip(reference, optimized):
         for a, b in zip(before, after):
             assert torch.equal(a, b)
+
+
+@pytest.mark.parametrize("backend", ["reference", "cuda"])
+@pytest.mark.parametrize("thresholds", [[0.4], [0.4, 0.5], [0.4, 0.5, 0.1, 0.1, 0.1, 0.2]])
+@pytest.mark.parametrize("limit", [2, 4, 10])
+@pytest.mark.parametrize("per_class", [False, True])
+def test_batched_thresholds_ordering_and_indices(backend, thresholds, limit, per_class):
+    """Match single-sample results with shared thresholds, sparse classes and empty samples."""
+    if backend == "cuda" and not torch.cuda.is_available():
+        pytest.skip("CUDA is unavailable")
+    device = "cuda" if backend == "cuda" else "cpu"
+    boxes = torch.tensor([_make_box(x, 0.0) for x in [0.0, 10.0, 20.0, 0.0, 30.0, 40.0]], device=device)
+    scores = torch.tensor([0.6, 0.9, 0.8, 0.7, 0.3, 0.95], device=device)
+    labels = torch.tensor([0, 1, 5, 0, 5, 5], device=device)
+    boxes_batch = [boxes[:0], boxes, boxes, boxes.flip(0)]
+    scores_batch = [scores[:0], scores, scores * 0.01, scores.flip(0)]
+    labels_batch = [labels[:0], labels, labels, labels.flip(0)]
+    kwargs = dict(
+        score_thresholds=thresholds,
+        iou_threshold=0.5,
+        max_num_objects=limit,
+        per_class_topk=per_class,
+        return_indices=True,
+    )
+    expected = [
+        apply_nms(b, s, labels, use_rotated=backend == "cuda", **kwargs)
+        for b, s, labels in zip(boxes_batch, scores_batch, labels_batch)
+    ]
+    if backend == "cuda":
+        actual = apply_nms_batch(boxes_batch, scores_batch, labels_batch, **kwargs)
+    else:
+        actual = postprocess._apply_nms_batch_rotated(_PrefixReference(), boxes_batch, scores_batch, labels_batch, **kwargs)
+    for wanted, result in zip(expected, actual):
+        for a, b in zip(wanted, result):
+            assert torch.equal(a, b)
+
+
+@pytest.mark.parametrize("backend", ["reference", "cuda"])
+@pytest.mark.parametrize("empty", [False, True])
+def test_batched_no_survivors(backend, empty):
+    """Return aligned empty results when all samples are empty or below threshold."""
+    if backend == "cuda" and not torch.cuda.is_available():
+        pytest.skip("CUDA is unavailable")
+    device = "cuda" if backend == "cuda" else "cpu"
+    boxes = torch.tensor([_make_box(0.0, 0.0)], device=device)
+    scores = torch.tensor([0.1], device=device)
+    labels = torch.tensor([5], device=device)
+    if empty:
+        boxes, scores, labels = boxes[:0], scores[:0], labels[:0]
+    args = ([boxes, boxes], [scores, scores], [labels, labels], [0.5], 0.5, 10)
+    if backend == "cuda":
+        results = apply_nms_batch(*args, return_indices=True)
+    else:
+        results = postprocess._apply_nms_batch_rotated(_PrefixReference(), *args, return_indices=True)
+    assert len(results) == 2
+    for b, s, labels, indices in results:
+        assert b.shape == (0, 7)
+        assert s.shape == labels.shape == indices.shape == (0,)
+        assert indices.dtype == torch.long
