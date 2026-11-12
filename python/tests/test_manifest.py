@@ -232,3 +232,19 @@ def test_validate_manifest_rejects_bundle_escaping_file_path():
     payload["artifact"]["files"]["checkpoint"] = "../best.pt"
     with pytest.raises(ValueError, match="bundle root"):
         manifest.validate_manifest(payload)
+
+
+@pytest.mark.parametrize("mode", ["existence", "existence_quality", "existence_quality_class"])
+def test_manifest_accepts_score_mode(mode):
+    """Accept each supported detection confidence mode."""
+    payload = _minimal_payload()
+    payload["runtime_defaults"]["postprocessing"]["score_mode"] = mode
+    manifest.validate_manifest(payload)
+
+
+def test_manifest_rejects_unknown_score_mode():
+    """Reject confidence modes outside the manifest contract."""
+    payload = _minimal_payload()
+    payload["runtime_defaults"]["postprocessing"]["score_mode"] = "incorrect"
+    with pytest.raises(ValueError, match="score_mode"):
+        manifest.validate_manifest(payload)

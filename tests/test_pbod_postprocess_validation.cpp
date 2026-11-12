@@ -29,6 +29,15 @@ bool ExpectInvalidArgument(const std::function<void()>& fn) {
 
 /** Run PBOD decoder input-validation regression checks. */
 int main() {
+  using pcod_common::ParsePbodScoreMode;
+  using pcod_common::PbodScoreMode;
+  assert(ParsePbodScoreMode("existence") == PbodScoreMode::Existence);
+  assert(ParsePbodScoreMode("existence_quality") == PbodScoreMode::ExistenceQuality);
+  assert(ParsePbodScoreMode("existence_quality_class") == PbodScoreMode::ExistenceQualityClass);
+  for (const auto* invalid : {"", "quality", "Existence", "existence_quality_classes"}) {
+    assert(ExpectInvalidArgument([&]() { (void)ParsePbodScoreMode(invalid); }));
+  }
+
   using pcod_common::BuildPillarGrid;
   using pcod_common::DecodePbod;
   using pcod_common::PbodOutputsView;
@@ -59,6 +68,19 @@ int main() {
     bad_view.reg_logits = reg_logits;
     bad_view.num_pillars = 1;
     bad_view.num_classes = 1;
+    bad_view.reg_dim = 7;
+    assert(ExpectInvalidArgument([&]() { (void)DecodePbod(bad_view, grid, config); }));
+  }
+
+  {
+    PbodOutputsView bad_view;
+    bad_view.focal_logits = focal_logits;
+    bad_view.objectness_logits = focal_logits;
+    bad_view.class_logits = class_logits;
+    bad_view.size_posterior = size_posterior;
+    bad_view.reg_logits = reg_logits;
+    bad_view.num_pillars = 1;
+    bad_view.num_classes = 1;
     bad_view.reg_dim = 6;
     assert(ExpectInvalidArgument([&]() { (void)DecodePbod(bad_view, grid, config); }));
   }
@@ -66,6 +88,7 @@ int main() {
   {
     PbodOutputsView good_view;
     good_view.focal_logits = focal_logits;
+    good_view.objectness_logits = focal_logits;
     good_view.class_logits = class_logits;
     good_view.size_posterior = size_posterior;
     good_view.reg_logits = reg_logits;

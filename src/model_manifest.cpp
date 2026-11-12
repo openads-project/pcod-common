@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "pcod_common/model_manifest.hpp"
+#include "pcod_common/pbod_postprocess.hpp"
 #include "pcod_common/version.hpp"
 
 #include <filesystem>
@@ -292,7 +293,7 @@ ModelManifest LoadModelManifest(const std::string& path) {
     EnsureKnownKeys(point_feature, "runtime_defaults.preprocessing.point_feature", {"value_threshold"});
 
     const YAML::Node runtime_postprocessing = RequireChild(runtime_defaults, "postprocessing", "runtime_defaults.postprocessing");
-    EnsureKnownKeys(runtime_postprocessing, "runtime_defaults.postprocessing", {"class_score_threshold", "nms"});
+    EnsureKnownKeys(runtime_postprocessing, "runtime_defaults.postprocessing", {"class_score_threshold", "nms", "score_mode"});
 
     const YAML::Node nms = RequireChild(runtime_postprocessing, "nms", "runtime_defaults.postprocessing.nms");
     EnsureKnownKeys(nms, "runtime_defaults.postprocessing.nms", {"score_threshold", "iou_threshold", "max_num_objects"});
@@ -419,6 +420,9 @@ ModelManifest LoadModelManifest(const std::string& path) {
     manifest.runtime_defaults.preprocessing.point_feature.value_threshold =
         LoadOptionalScalarValue<float>(LoadOptionalChild(point_feature, "value_threshold"),
                                        "runtime_defaults.preprocessing.point_feature.value_threshold", 0.0F);
+    if (runtime_postprocessing["score_mode"]) {
+      manifest.runtime_defaults.postprocessing.score_mode = runtime_postprocessing["score_mode"].as<std::string>();
+    }
     manifest.runtime_defaults.postprocessing.class_score_threshold = RequireScalarValue<float>(
         RequireChild(runtime_postprocessing, "class_score_threshold", "runtime_defaults.postprocessing.class_score_threshold"),
         "runtime_defaults.postprocessing.class_score_threshold");
@@ -549,6 +553,11 @@ void ValidateModelManifest(const ModelManifest& manifest) {
     throw std::runtime_error("frozen_contract.preprocessing.point_feature_normalization.type is invalid");
   }
 
+  try {
+    (void)ParsePbodScoreMode(manifest.runtime_defaults.postprocessing.score_mode);
+  } catch (const std::invalid_argument&) {
+    throw std::runtime_error("runtime_defaults.postprocessing.score_mode is invalid");
+  }
   if (manifest.runtime_defaults.postprocessing.class_score_threshold < 0.0F ||
       manifest.runtime_defaults.postprocessing.class_score_threshold > 1.0F) {
     throw std::runtime_error("runtime_defaults.postprocessing.class_score_threshold must be within [0.0, 1.0]");

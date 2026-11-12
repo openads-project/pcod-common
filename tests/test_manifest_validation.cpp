@@ -122,6 +122,18 @@ int main() {
     assert(ExpectRuntimeError([&]() { pcod_common::ValidateModelManifest(bad); }));
   }
 
+  for (const std::string& mode : {"existence", "existence_quality", "existence_quality_class"}) {
+    auto manifest = MakeValidManifest();
+    manifest.runtime_defaults.postprocessing.score_mode = mode;
+    pcod_common::ValidateModelManifest(manifest);
+  }
+
+  {
+    auto bad = MakeValidManifest();
+    bad.runtime_defaults.postprocessing.score_mode = "unsupported";
+    assert(ExpectRuntimeError([&]() { pcod_common::ValidateModelManifest(bad); }));
+  }
+
   {
     auto bad = MakeValidManifest();
     bad.artifact.outputs.clear();

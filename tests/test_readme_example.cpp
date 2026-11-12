@@ -34,6 +34,7 @@ int main() {
 
   pcod_common::PbodOutputsView view;
   view.focal_logits = focal_logits;
+  view.objectness_logits = focal_logits;
   view.size_posterior = size_posterior.data();
   view.class_logits = class_logits;
   view.reg_logits = reg_logits.data();

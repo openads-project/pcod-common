@@ -31,6 +31,7 @@ add_library(pcod_common STATIC
   src/model_manifest.cpp
 )
 add_library(pcod_common::pcod_common ALIAS pcod_common)
+target_compile_features(pcod_common PUBLIC cxx_std_17)
 
 set_target_properties(pcod_common PROPERTIES
   CXX_STANDARD 17
@@ -75,6 +76,10 @@ if(PCOD_COMMON_BUILD_TESTS)
   add_executable(pcod_common_test_nms tests/test_nms.cpp)
   target_link_libraries(pcod_common_test_nms PRIVATE pcod_common)
   add_test(NAME pcod_common_test_nms COMMAND pcod_common_test_nms)
+
+  add_executable(pcod_common_test_nms_merging tests/test_nms_merging.cpp)
+  target_link_libraries(pcod_common_test_nms_merging PRIVATE pcod_common)
+  add_test(NAME pcod_common_test_nms_merging COMMAND pcod_common_test_nms_merging)
 
   add_executable(pcod_common_test_manifest tests/test_manifest.cpp)
   target_link_libraries(pcod_common_test_manifest PRIVATE pcod_common)

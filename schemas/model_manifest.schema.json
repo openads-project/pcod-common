@@ -239,6 +239,7 @@
           "additionalProperties": false,
           "required": ["class_score_threshold", "nms"],
           "properties": {
+            "score_mode": {"type": "string", "enum": ["existence", "existence_quality", "existence_quality_class"]},
             "class_score_threshold": {
               "type": "number",
               "minimum": 0,
